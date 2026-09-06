@@ -33,10 +33,20 @@ If `uv` can't write to its cache dir (some sandboxes), prefix with
 A workspace is a git repo of markdown files. This is where your data lives.
 
 ```bash
-finlink init ~/fin-link      # or any directory
-cd ~/fin-link
+finlink init <dir>
+cd <dir>
 git init                     # recommended — makes every run revertible
 ```
+
+To back it up to a remote:
+
+```bash
+git remote add origin git@github.com:<you>/fin-link.git
+git push -u origin main
+```
+
+`finlink init` **appends** `data/` and `logs/` to an existing `.gitignore` rather than
+overwriting it, so a project that already has one keeps its rules.
 
 This creates:
 
@@ -53,6 +63,9 @@ logs/                    GITIGNORED LLM run log
 
 **Git is not optional in spirit.** Every mutating command commits, so any mistake is
 one `git diff` from being undone.
+
+If git is unavailable or read-only (some sandboxes), finlink still writes your data and
+prints a warning: `data was written but is NOT committed`. It never crashes mid-write.
 
 ---
 
