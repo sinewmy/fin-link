@@ -14,7 +14,7 @@ Every action moves through the same four layers. Knowing them makes the flows be
 ```
 1. YOU        conversation: "I bought 20 NVDA at 175 because AI capex keeps rising"
                  |
-2. SKILL      skills/record-trade/SKILL.md  — collects inputs, enforces write-safety rules
+2. SKILL      .agents/skills/record-trade/SKILL.md  — collects inputs, enforces write-safety rules
                  |
 3. CLI        finlink record-trade ...      — one deterministic command, testable, offline-capable
                  |

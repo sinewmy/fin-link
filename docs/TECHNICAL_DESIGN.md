@@ -380,7 +380,8 @@ No scheduler exists (D6), so proactive alerting is out of scope until the user w
 
 ## 6. Skills as the user interface
 
-Five skills in `skills/`, installed to `~/.codex/skills`. Each is a thin wrapper over one CLI command
+Five skills in `skills/`, discovered at project level via `.agents/skills/` (never installed globally).
+Each is a thin wrapper over one CLI command
 and carries the write-safety rules in its own instructions.
 
 | Skill | Wraps | Purpose |

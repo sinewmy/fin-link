@@ -83,7 +83,7 @@ reasoning, and does it change your behaviour?* Everything else is leverage on th
 - **User confirmation gate:** created as `status: draft`; user edits/approves -> `active`.
 - `finlink record-trade` — appends to `ledger.md`, creates thesis file, commits.
 - `finlink set-frontmatter --key --value` — key-scoped mutation (never whole-file rewrite).
-- `skills/record-trade/SKILL.md` installed to `~/.codex/skills`.
+- `skills/record-trade/SKILL.md`, copied to `.agents/skills/record-trade/SKILL.md` for project-level discovery.
 
 ### Exit criteria
 - [ ] "NVDA keeps growing because AI datacenter capex keeps rising" -> core hypothesis + >=2

@@ -5,6 +5,7 @@
 > | Doc | What it covers |
 > |---|---|
 > | **`USAGE.md`** (this file) | Setup and daily use — start here |
+| `USAGE.md` §2b | **The conversational entry point (skills)** — how you actually talk to fin-link |
 > | `USER_FLOW.md` | Typical workflows, and what the system does under the hood |
 > | `TECHNICAL_DESIGN.md` | Architecture, data model, pipelines, standards |
 > | `IMPLEMENTATION_PLAN.md` | Phased roadmap and exit criteria |
@@ -66,6 +67,75 @@ one `git diff` from being undone.
 
 If git is unavailable or read-only (some sandboxes), finlink still writes your data and
 prints a warning: `data was written but is NOT committed`. It never crashes mid-write.
+
+---
+
+## 2b. The conversational entry point (skills)
+
+This is the **primary** way to use fin-link. Sections 3–8 are the raw CLI reference — useful when you
+want precision, but in day-to-day use you just talk.
+
+### How to start the conversation
+
+1. Open a terminal **in the fin-link project directory**:
+
+   ```bash
+   cd ~/codex-projects/fin-link
+   codex
+   ```
+
+   Yes — in the Codex CLI window. The project directory matters: that is how Codex finds the skills
+   and how `finlink` finds your workspace.
+
+2. Then either **type a slash command**, or **just describe what you did in plain English**. Both
+   work; they take the same path.
+
+   | You type | What happens |
+   |---|---|
+   | `/record-trade` | Codex loads the `record-trade` skill and walks you through it |
+   | `/ingest` | Refreshes prices/fundamentals/news for held tickers |
+   | `/validate` | Re-tests your theses against new evidence |
+   | `/review` | Generates the weekly two-half review |
+   | `/risk-check` | Evaluates concentration/cash/drawdown rules |
+   | *"I bought 20 NVDA at 175 because AI datacenter capex keeps rising"* | Codex matches this to `record-trade` by the skill's description and runs the same flow |
+
+You do **not** need to memorise CLI flags. The skill's job is to collect the inputs (including the
+"what would prove you wrong?" question you'd otherwise skip) and then call the CLI for you.
+
+### Why project-level skills
+
+The five skills live in **this repository** at `.agents/skills/<name>/SKILL.md` — they are **not**
+installed globally. That means:
+
+- they are version-controlled with the project, so they evolve with the code;
+- they only exist when you're working in fin-link, so they never pollute other projects;
+- cloning the repo on another machine gives you the same workflow.
+
+> Note: the canonical copy is committed in `skills/<name>/SKILL.md`; `.agents/skills/` is the
+> discovery copy Codex reads. If you edit a skill, edit **both** or re-copy. **Codex must be
+> restarted** to pick up skill changes.
+
+### What each skill guarantees
+
+Every skill carries the same hard rules in its own instructions:
+
+- **Append only, never rewrite.** Status changes go through `finlink set-frontmatter --key --value`.
+- **Runs `finlink doctor` before and after** — so a bad write is caught immediately.
+- **Never invents a financial number.** All figures come from `finlink/domain/`; the model only
+  writes prose.
+- **One git commit per run**, so any mistake is one `git diff` from being undone.
+
+### Skill -> CLI -> files
+
+| Skill | Calls | Reads / writes |
+|---|---|---|
+| `record-trade` | `finlink record-trade`, `finlink set-frontmatter` | appends `portfolio/ledger.md`, updates `positions.md`, creates `theses/<TICKER>-<slug>.md` |
+| `ingest` | `finlink ingest`, `finlink onboard` | writes cache only: `data/prices/`, `data/metrics/`, `data/news/` (gitignored) |
+| `validate` | `finlink validate` | appends `## Validation — <date>` to each thesis; may update `status` |
+| `risk-check` | `finlink risk-check` | regenerates `alerts.md` |
+| `review` | `finlink review` | writes `reviews/<week>.md` |
+
+If a skill ever fails or hangs, fall back to the CLI directly — sections 3–8 document every command.
 
 ---
 
