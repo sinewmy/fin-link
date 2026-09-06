@@ -1,0 +1,7 @@
+# fin-link configuration
+base_currency: USD
+hkd_peg: '7.8'          # HKD is pegged; do not float it
+fx:
+  SEK: '0.095'          # 1 SEK = 0.095 USD — refresh with `finlink fx-set`
+models: {}              # fill per pipeline, e.g. decompose: openai/gpt-4o-mini
+risk_rules: []
