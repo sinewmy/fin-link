@@ -86,11 +86,15 @@ def doctor() -> None:
 @main.command()
 def show() -> None:
     """Render the portfolio: weights, cost basis, unrealised PnL (USD-normalised)."""
-    root = find_root()
-    ws = load_workspace(root)
+    from finlink.ingest.pipeline import latest_prices
+    from finlink.ingest.store import Store
     from finlink.render import render_portfolio
 
-    click.echo(render_portfolio(ws))
+    root = find_root()
+    ws = load_workspace(root)
+    held = sorted({p.ticker for p in ws.positions} | {t.ticker for t in ws.ledger})
+    prices = latest_prices(Store(root), held)
+    click.echo(render_portfolio(ws, prices))
 
 
 def _get_driver(root: Path, driver_override: str | None = None) -> tuple[LLMClient, RuntimeConfig]:
@@ -235,6 +239,169 @@ def set_frontmatter(thesis_path: Path, key: str, value: str, no_commit: bool) ->
         sha = commit(root, f"finlink set-frontmatter {target.name} {key}")
         if sha:
             click.echo(f"committed {sha}")
+
+
+
+def _drivers(root: Path, driver_override: str | None = None) -> tuple[object, object | None]:
+    """Resolve market-data + news drivers. `mock` runs fully offline."""
+    from finlink.config import RuntimeConfig
+    from finlink.ingest.mock import MockMarketDriver, MockNewsDriver
+    from finlink.ingest.yfinance_driver import YFinanceDriver
+
+    cfg = RuntimeConfig.load(root)
+    name = (driver_override or cfg.driver or "yfinance").lower()
+    if name == "mock":
+        # strict: unknown tickers fail instead of silently inventing prices
+        return MockMarketDriver(strict=True), MockNewsDriver()
+    if name in ("yfinance", "openrouter"):
+        return YFinanceDriver(), None
+    if name == "echo":
+        return MockMarketDriver(), MockNewsDriver()
+    raise click.ClickException(f"unknown ingest driver {name!r} (expected yfinance or mock)")
+
+
+@main.command()
+@click.argument("tickers", nargs=-1)
+@click.option("--driver", default=None, help="yfinance (default) or mock (offline)")
+@click.option("--days", default=400, show_default=True)
+def ingest(tickers: tuple[str, ...], driver: str | None, days: int) -> None:
+    """Fetch prices, fundamentals and news into the data/ cache (idempotent)."""
+    from finlink.ingest.pipeline import ingest_ticker, log_run
+    from finlink.ingest.store import Store
+    from finlink.workspace import load_workspace
+
+    root = find_root()
+    ws = load_workspace(root)
+    held = {p.ticker for p in ws.positions} | {t.ticker for t in ws.ledger}
+    wanted = list(tickers) or sorted(held)
+    if not wanted:
+        raise click.ClickException("no tickers given and none found in portfolio")
+
+    store = Store(root)
+    store.ensure()
+    market, news = _drivers(root, driver)
+    results = [
+        ingest_ticker(t, store, market, news, days=days)  # type: ignore[arg-type]
+        for t in wanted
+    ]
+    log_run(root, results)
+
+    failed = False
+    click.echo(f"{'ticker':<14}{'added':>7}{'total':>7}{'news':>7}  {'ccy':<5}status")
+    for r in results:
+        status = "ok" if not r.error else f"FAILED: {r.error[:60]}"
+        failed = failed or bool(r.error)
+        click.echo(
+            f"{r.ticker:<14}{r.prices_added:>7}{r.prices_total:>7}{r.news_added:>7}  "
+            f"{r.currency:<5}{status}"
+        )
+    if failed:
+        raise SystemExit(1)
+
+
+@main.command()
+@click.argument("tickers", nargs=-1, required=True)
+@click.option("--driver", default=None)
+def onboard(tickers: tuple[str, ...], driver: str | None) -> None:
+    """Verify a ticker resolves before trusting it.
+
+    Fails loud on coverage gaps (HK and some Swedish names have Yahoo gaps) rather
+    than storing nulls.
+    """
+    from finlink.ingest.store import Store
+
+    root = find_root()
+    store = Store(root)
+    store.ensure()
+    market, _ = _drivers(root, driver)
+    bad = 0
+    for t in tickers:
+        try:
+            bars = market.fetch_prices(t, days=30)  # type: ignore[attr-defined]
+            fund = market.fetch_fundamentals(t)  # type: ignore[attr-defined]
+            if not bars:
+                raise RuntimeError("no price data returned")
+            click.echo(
+                f"OK   {t:<12} ccy={fund.currency:<4} last={bars[-1].close} "
+                f"as_of={bars[-1].day.isoformat()}"
+            )
+        except Exception as e:  # noqa: BLE001
+            bad += 1
+            click.echo(f"FAIL {t:<12} {e}", err=True)
+    if bad:
+        raise SystemExit(1)
+
+
+@main.command()
+@click.argument("ticker")
+def quote(ticker: str) -> None:
+    """Show cached price and computed metrics for a ticker."""
+    from finlink.domain.quant import summarise
+    from finlink.ingest.store import Store
+
+    root = find_root()
+    store = Store(root)
+    bars = store.load_prices(ticker)
+    if not bars:
+        raise click.ClickException(f"no cached prices for {ticker}; run `finlink ingest {ticker}`")
+    s = summarise(bars)
+    assert s is not None
+    fund = store.load_fundamentals(ticker)
+    click.echo(f"{ticker}  last={s.last_price} {s.currency}  as_of={s.as_of}")
+    click.echo(f"  return(period) {s.period_return_pct:.2f}%")
+    click.echo(f"  volatility(ann) {s.annualised_vol_pct:.2f}%")
+    click.echo(f"  max drawdown    {s.max_drawdown_pct:.2f}%")
+    if s.sma_50:
+        click.echo(f"  sma50           {s.sma_50:.4f}")
+    if s.sma_200:
+        click.echo(f"  sma200          {s.sma_200:.4f}")
+    if fund and fund.metrics:
+        click.echo("  fundamentals:")
+        for k, v in sorted(fund.metrics.items()):
+            click.echo(f"    {k:<22}{v}")
+
+
+@main.command()
+@click.argument("ticker")
+@click.option("--limit", default=10, show_default=True)
+def news(ticker: str, limit: int) -> None:
+    """List cached news for a ticker (every item has a source URL)."""
+    from finlink.ingest.store import Store
+
+    root = find_root()
+    items = Store(root).load_news(ticker)
+    if not items:
+        raise click.ClickException(f"no cached news for {ticker}; run `finlink ingest {ticker}`")
+    for it in list(reversed(items))[:limit]:
+        click.echo(f"{it.published_at}  {it.title}\n    {it.url}")
+
+
+@main.command("fx-update")
+def fx_update() -> None:
+    """Refresh FX rates from Frankfurter (SEK; HKD stays on its configured peg)."""
+    import yaml
+
+    from finlink.ingest.fx import fetch_rate_to_usd
+
+    root = find_root()
+    cfg_path = root / "config" / "config.yaml"
+    raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    fx = raw.get("fx") or {}
+    # HKD is pegged by design; a live rate would silently override the peg in
+    # build_rates() and contradict the "do not float it" rule.
+    for ccy in ("SEK", "HKD"):
+        if ccy == "HKD" and raw.get("hkd_peg"):
+            fx.pop("HKD", None)
+            click.echo(f"HKD: left on the {raw['hkd_peg']} peg (config hkd_peg)")
+            continue
+        try:
+            rate, as_of = fetch_rate_to_usd(ccy)
+            fx[ccy] = str(rate)
+            click.echo(f"{ccy}: 1 {ccy} = {rate} USD (as of {as_of or 'unknown'})")
+        except Exception as e:  # noqa: BLE001
+            click.echo(f"{ccy}: FAILED — {e}", err=True)
+    raw["fx"] = fx
+    cfg_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
 
 
 @main.command("cost-report")

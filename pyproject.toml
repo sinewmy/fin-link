@@ -10,6 +10,8 @@ dependencies = [
     "python-frontmatter>=1.1",
     "tabulate>=0.9",
     "openai>=3.8.0",
+    "yfinance>=1.7.0",
+    "feedparser>=6.0.14",
 ]
 
 [project.scripts]

@@ -154,7 +154,25 @@ is rejected.
 
 ---
 
-## 6. Inspect
+## 6. Fetch market data
+
+```bash
+finlink ingest                    # all held tickers
+finlink ingest AAPL NVDA          # specific tickers
+finlink ingest --driver mock      # offline, deterministic test data
+finlink onboard VOLV-B.ST 0700.HK # verify a ticker resolves before trusting it
+finlink quote AAPL                # price + volatility, drawdown, fundamentals
+finlink news NVDA
+finlink fx-update                 # refresh SEK; HKD stays on its peg
+```
+
+Ingestion is **idempotent** — re-running adds nothing new. `data/` is a disposable
+cache; deleting it and re-running `ingest` restores it.
+
+`onboard` fails loudly on coverage gaps rather than storing nulls. Yahoo's HK coverage
+is incomplete, so always onboard HK tickers first.
+
+## 7. Inspect
 
 ```bash
 finlink doctor        # validate every file against the schema; exit 1 on any error
@@ -169,7 +187,7 @@ hypothesis IDs — and **fails loudly rather than auto-repairing**.
 
 ---
 
-## 7. Command reference
+## 8. Command reference
 
 | Command | What it does | Writes? |
 |---|---|---|
@@ -178,6 +196,11 @@ hypothesis IDs — and **fails loudly rather than auto-repairing**.
 | `finlink confirm <file>` | draft -> active | yes (commits) |
 | `finlink set-frontmatter <file> --key K --value V` | Change ONE frontmatter key | yes (commits) |
 | `finlink show` | Portfolio table | no |
+| `finlink ingest [TICKERS]` | Fetch prices/fundamentals/news into cache | cache only |
+| `finlink onboard <TICKER>` | Verify ticker coverage | cache only |
+| `finlink quote <TICKER>` | Cached price + metrics | no |
+| `finlink news <TICKER>` | Cached news | no |
+| `finlink fx-update` | Refresh FX rates | yes |
 | `finlink doctor` | Validate everything | no |
 | `finlink cost-report` | LLM spend summary | no |
 | `finlink fx-set <CCY> <rate>` | Set FX rate | yes |
@@ -186,22 +209,18 @@ Add `--no-commit` to any writing command to skip the git commit.
 
 ---
 
-## 8. What's NOT built yet
+## 9. What's NOT built yet
 
 | Missing | Phase |
 |---|---|
-| `ingest` — automatic prices and news | 2 |
 | `validate` — re-test theses against evidence | 3 |
 | `review` — weekly report | 4 |
 | `risk-check` — concentration/drawdown rules | 4 |
-| `finlink show` without passing prices manually | 2 |
-
-Until Phase 2, `finlink show` needs prices supplied programmatically; the CLI command
-alone will report missing prices.
+| Real news source (mock only today) | 2+ |
 
 ---
 
-## 9. Safety rules (enforced in code)
+## 10. Safety rules (enforced in code)
 
 These are the guarantees that make a markdown system trustworthy:
 
@@ -217,7 +236,7 @@ These are the guarantees that make a markdown system trustworthy:
 
 ---
 
-## 10. Typical first session
+## 11. Typical first session
 
 ```bash
 export OPENROUTER_API_KEY=sk-or-...

@@ -58,3 +58,64 @@ finlink cost-report
 - `require_parameters: true` asserted on every OpenRouter call.
 - Generated files pass the same Pydantic model `doctor` uses.
 - One git commit per run; `confirm` twice is rejected.
+
+---
+
+# Phase 2 — Status
+
+**Completed.** Ingestion: prices, fundamentals, news, FX, and quant metrics.
+
+## What was added
+
+| Component | File | Purpose |
+|---|---|---|
+| Data model | `finlink/ingest/base.py` | `PriceBar`, `NewsItem`, `Fundamentals`, driver protocols |
+| Cache store | `finlink/ingest/store.py` | Append-only, idempotent, disposable `data/` |
+| yfinance driver | `finlink/ingest/yfinance_driver.py` | Prices + fundamentals, fails loud on gaps |
+| Mock driver | `finlink/ingest/mock.py` | Deterministic offline data |
+| FX | `finlink/ingest/fx.py` | Frankfurter (ECB), no API key |
+| Pipeline | `finlink/ingest/pipeline.py` | P2 ingest + run logging |
+| Quant | `finlink/domain/quant.py` | Returns, volatility, drawdown, SMA — computed in code |
+
+## Commands
+
+```bash
+finlink ingest [TICKERS...] [--driver mock]   # idempotent; defaults to held tickers
+finlink onboard <TICKER...>                   # verify coverage, fail loud
+finlink quote <TICKER>                        # cached price + metrics
+finlink news <TICKER> [--limit N]
+finlink fx-update                             # refresh SEK (HKD stays pegged)
+finlink show                                  # now values the portfolio from cache
+```
+
+## Environment note: Yahoo Finance is rate-limited here
+
+From this machine Yahoo returns **HTTP 429** for `query*.finance.yahoo.com`
+(general egress works — GitHub returns 200). This is IP-level, not a code bug, so
+the same code should work from your own machine. Verify with:
+
+```bash
+finlink onboard AAPL
+```
+
+If it fails with a coverage/rate error, use `--driver mock` for offline testing, or
+swap in another provider behind the `MarketDataDriver` protocol.
+
+FX works today via Frankfurter (real rate fetched: 1 SEK = 0.1047 USD).
+
+## Bugs found and fixed
+
+1. **`fx-update` overrode the HKD peg.** It wrote a live HKD rate into `config.fx`,
+   which `build_rates()` prefers over the peg — contradicting "HKD is pegged, do not
+   float it". Now HKD is skipped when `hkd_peg` is set.
+2. **Closure captured loop variables** in the yfinance price loop (ruff B023): every
+   bar would have reported the last row's values. Fixed by binding as default args.
+3. **Mock driver invented data for unknown tickers**, so `onboard` reported OK for
+   `FAKE-NOT-REAL`. Now strict by default in the CLI.
+4. **Frankfurter returned 403** without a User-Agent header.
+
+## Known gaps
+
+- News is only wired for the mock driver; a real RSS/news driver is not yet
+  connected (the `NewsDriver` protocol and dedupe/provenance logic are ready).
+- `finlink show` ignores stale-price warnings; it uses whatever is cached.
