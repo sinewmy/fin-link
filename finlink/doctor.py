@@ -72,8 +72,7 @@ def run(root: Path) -> bool:
                 continue
             if tf.slug in slugs:
                 errors.append(
-                    f"theses/{f.name}: duplicate slug '{tf.slug}' "
-                    f"(also in {slugs[tf.slug].name})"
+                    f"theses/{f.name}: duplicate slug '{tf.slug}' (also in {slugs[tf.slug].name})"
                 )
             slugs[tf.slug] = f
             expected = f"{tf.ticker}-{tf.slug}.md"

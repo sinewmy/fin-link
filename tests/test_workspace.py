@@ -17,12 +17,15 @@ LEDGER_HEADER = (
     "thesis_slug | fx_rate_usd_at_trade |\n"
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
 )
-LEDGER = LEDGER_HEADER + """
+LEDGER = (
+    LEDGER_HEADER
+    + """
 | 2026-01-10 | AAPL | buy | 10 | 100 | USD | - | - | - | - |
 | 2026-02-01 | AAPL | sell | 4 | 120 | USD | - | - | - | - |
 | 2026-03-01 | VOLV-B.ST | buy | 1000 | 250 | SEK | - | - | - | - |
 | 2026-04-01 | 0700.HK | buy | 100 | 390 | HKD | - | - | - | - |
 """
+)
 
 
 @pytest.fixture()

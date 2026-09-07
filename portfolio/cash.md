@@ -1,3 +1,5 @@
 | currency | amount |
 | --- | --- |
-| USD | 0 |
+| USD | 30000 |
+| HKD | 200000 |
+| SEK | 250000 |

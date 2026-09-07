@@ -58,9 +58,7 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         rows = [existing[k] for k in sorted(existing)]
         with path.open("w", newline="", encoding="utf-8") as f:
-            fields = [
-                "day", "open", "high", "low", "close", "adj_close", "volume", "currency"
-            ]
+            fields = ["day", "open", "high", "low", "close", "adj_close", "volume", "currency"]
             w = csv.DictWriter(f, fieldnames=fields)
             w.writeheader()
             w.writerows(rows)

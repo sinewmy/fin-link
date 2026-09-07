@@ -67,8 +67,7 @@ class YFinanceDriver:
                     close=dec("Close"),
                     adj_close=(
                         dec("Adj Close")
-                        if row.get("Adj Close") is not None
-                        and not pd.isna(row.get("Adj Close"))
+                        if row.get("Adj Close") is not None and not pd.isna(row.get("Adj Close"))
                         else dec("Close")
                     ),
                     volume=int(row.get("Volume") or 0),

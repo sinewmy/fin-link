@@ -17,7 +17,7 @@ def test_buy_then_partial_sell_realised_pnl():
     pos.add_lot(Lot(quantity=Decimal("10"), unit_cost=Decimal("100")))
     realised = pos.reduce(Decimal("4"), Decimal("120"))
 
-    assert realised == Decimal("80")          # 4 * (120-100)
+    assert realised == Decimal("80")  # 4 * (120-100)
     assert pos.quantity == Decimal("6")
     assert pos.cost_basis == Decimal("600")
     assert pos.avg_cost == Decimal("100")
@@ -34,7 +34,7 @@ def test_sell_across_two_lots_fifo():
     # FIFO: 10 @100 + 5 @120 sold -> cost 1000 + 600 = 1600; proceeds 1950
     assert realised == Decimal("350")
     assert pos.quantity == Decimal("5")
-    assert pos.cost_basis == Decimal("600")   # remaining 5 from the 120 lot
+    assert pos.cost_basis == Decimal("600")  # remaining 5 from the 120 lot
 
 
 def test_fees_included_in_cost_basis():
@@ -42,7 +42,7 @@ def test_fees_included_in_cost_basis():
     pos.add_lot(Lot(quantity=Decimal("10"), unit_cost=Decimal("100"), fees=Decimal("20")))
     assert pos.cost_basis == Decimal("1020")
     realised = pos.reduce(Decimal("10"), Decimal("110"), fees=Decimal("5"))
-    assert realised == Decimal("75")          # proceeds 1100-5=1095, cost 1020
+    assert realised == Decimal("75")  # proceeds 1100-5=1095, cost 1020
 
 
 def test_unrealised_pnl_and_market_value():

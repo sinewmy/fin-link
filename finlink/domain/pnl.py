@@ -62,9 +62,7 @@ class Position:
         if quantity <= 0:
             raise ValueError("sell quantity must be positive")
         if quantity > self.quantity:
-            raise ValueError(
-                f"cannot sell {quantity} {self.ticker}: only {self.quantity} held"
-            )
+            raise ValueError(f"cannot sell {quantity} {self.ticker}: only {self.quantity} held")
 
         remaining = quantity
         proceeds = quantity * unit_price - fees

@@ -68,9 +68,9 @@ def test_set_frontmatter_key_mutates_only_named_key(thesis: Path):
     doc = read_document(thesis)
 
     assert doc.frontmatter["status"] == "challenged"
-    assert doc.frontmatter["ticker"] == "NVDA"          # untouched
-    assert doc.frontmatter["confidence"] == "medium"    # untouched
-    assert doc.body == before_body                      # body untouched
+    assert doc.frontmatter["ticker"] == "NVDA"  # untouched
+    assert doc.frontmatter["confidence"] == "medium"  # untouched
+    assert doc.body == before_body  # body untouched
 
 
 def test_set_frontmatter_rejects_missing_file(tmp_path: Path):
@@ -122,3 +122,26 @@ def test_missing_frontmatter_raises():
 
     with pytest.raises(MarkdownError, match="no YAML frontmatter"):
         parse_document("# just a heading\n")
+
+
+def test_table_without_a_separator_row_keeps_every_data_row():
+    """Regression: a missing/malformed separator silently ate the first holding."""
+    text = "| ticker | quantity |\n --- | --- \n| BABA | 139 |\n| GLD | 24 |\n"
+    rows = parse_table(text)
+    assert [r["ticker"] for r in rows] == ["BABA", "GLD"]
+
+
+def test_table_with_a_normal_separator_still_works():
+    text = "| ticker | quantity |\n| --- | --- |\n| BABA | 139 |\n"
+    assert [r["ticker"] for r in rows_of(text)] == ["BABA"]
+
+
+def rows_of(text: str) -> list[dict[str, str]]:
+    return parse_table(text)
+
+
+def test_separator_detection_ignores_a_data_row_that_looks_like_one():
+    text = "| ticker | notes |\n| --- | --- |\n| BABA | --- |\n"
+    rows = parse_table(text)
+    assert len(rows) == 1
+    assert rows[0]["ticker"] == "BABA"

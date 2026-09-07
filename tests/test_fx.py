@@ -77,9 +77,7 @@ def test_multi_currency_portfolio_weights_sum_correctly():
     view = value_positions(positions, prices, {"USD": Decimal("1000")}, fx)
 
     # AAPL 1500 USD; VOLV 300000*0.1 = 30000 USD; 0700 40000/7.8 = 5128.21 USD
-    expected = (
-        Decimal("1500") + Decimal("30000") + Decimal("40000") / Decimal("7.8")
-    )
+    expected = Decimal("1500") + Decimal("30000") + Decimal("40000") / Decimal("7.8")
     assert view.positions_value_usd == pytest.approx(expected)
     assert view.cash_usd == Decimal("1000")
     total_weight = sum(p.weight_pct for p in view.positions)

@@ -35,10 +35,14 @@ class DecomposeResult:
 
 
 def slugify(text: str, max_len: int = 40) -> str:
-    import re
+    """Delegates to domain/slug.py — one slug rule for the whole project.
 
-    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return "-".join(slug.split("-")[:6])[:max_len].strip("-") or "thesis"
+    The old local version collapsed every non-ASCII reason to 'thesis', which made
+    two different Chinese-language theses share a filename.
+    """
+    from finlink.domain.slug import slugify as _slugify
+
+    return _slugify(text, max_len=max_len)
 
 
 def build_frontmatter(

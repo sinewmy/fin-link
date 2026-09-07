@@ -15,9 +15,7 @@ import click
 
 
 def _run(root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args, cwd=root, capture_output=True, text=True, check=False
-    )
+    return subprocess.run(args, cwd=root, capture_output=True, text=True, check=False)
 
 
 def is_repo(root: Path) -> bool:
@@ -37,7 +35,7 @@ def commit(root: Path, message: str, paths: list[Path] | None = None) -> str | N
         )
         return None
 
-    add = _run(root, ["git", "add", *( [str(p) for p in paths] if paths else ["-A"] )])
+    add = _run(root, ["git", "add", *([str(p) for p in paths] if paths else ["-A"])])
     if add.returncode != 0:
         click.echo(
             f"warning: `git add` failed ({add.stderr.strip()}) — data was written "

@@ -23,9 +23,9 @@ MOCK_ANCHORS = {
 class MockMarketDriver:
     name = "mock"
 
-
-    def __init__(self, anchors: dict[str, tuple[Decimal, str]] | None = None,
-                 strict: bool = False) -> None:
+    def __init__(
+        self, anchors: dict[str, tuple[Decimal, str]] | None = None, strict: bool = False
+    ) -> None:
         self._anchors = dict(MOCK_ANCHORS)
         if anchors:
             self._anchors.update(anchors)
@@ -37,9 +37,7 @@ class MockMarketDriver:
         if ticker in self._anchors:
             return self._anchors[ticker]
         if self.strict:
-            raise IngestError(
-                f"{ticker}: not in mock dataset. Add an anchor or use a real driver."
-            )
+            raise IngestError(f"{ticker}: not in mock dataset. Add an anchor or use a real driver.")
         return (Decimal("100"), "USD")
 
     def fetch_prices(self, ticker: str, days: int = 400) -> list[PriceBar]:

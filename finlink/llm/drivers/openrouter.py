@@ -20,6 +20,12 @@ S = TypeVar("S", bound=BaseModel)
 BASE_URL = "https://openrouter.ai/api/v1"
 
 
+def _key_env() -> str:
+    from finlink.config import api_key_env_var
+
+    return api_key_env_var()
+
+
 class OpenRouterDriver:
     """Structured-output-only driver.
 
@@ -33,7 +39,7 @@ class OpenRouterDriver:
     def __init__(self, api_key: str, base_url: str = BASE_URL, timeout_s: float = 120.0) -> None:
         if not api_key:
             raise LLMError(
-                "OpenRouter API key missing. Set the OPENROUTER_API_KEY env var, or "
+                f"OpenRouter API key missing. Set the {_key_env()} env var, or "
                 "`openrouter_api_key` in config/config.yaml.\n"
                 "To test offline at zero cost, add --driver echo."
             )

@@ -14,6 +14,11 @@ dependencies = [
     "feedparser>=6.0.14",
 ]
 
+# Optional: romanises Chinese ticker reasons into readable slugs
+# (kan-hao-teng-xun instead of cjk-770b597d817e). finlink runs fine without it.
+[project.optional-dependencies]
+pinyin = ["pypinyin>=0.50"]
+
 [project.scripts]
 finlink = "finlink.cli:main"
 

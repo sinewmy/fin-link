@@ -102,9 +102,27 @@ def parse_table(text: str) -> list[dict[str, str]]:
 
     def cells(line: str) -> list[str]:
         return [c.strip() for c in line.strip().strip("|").split("|")]
+
     header = cells(rows[0])
+
+    def is_separator(line: str) -> bool:
+        vals = cells(line)
+        return bool(vals) and all(set(c) <= set("-: ") and c for c in vals)
+
+    # The separator row is DETECTED, not assumed to be rows[1]. A missing or
+    # malformed separator made the parser skip the first data row silently —
+    # one holding vanished from the portfolio with no error at all.
+    data_start = 1
+    for i, line in enumerate(rows[1:], start=1):
+        if is_separator(line):
+            data_start = i + 1
+            break
+        if i == 1:
+            # No separator at all: treat every row after the header as data.
+            data_start = 1
+
     out: list[dict[str, str]] = []
-    for line in rows[2:]:  # skip separator row
+    for line in rows[data_start:]:
         vals = cells(line)
         if len(vals) != len(header):
             raise MarkdownError(
@@ -117,6 +135,7 @@ def parse_table(text: str) -> list[dict[str, str]]:
 def render_table(rows: list[dict[str, str]], headers: list[str]) -> str:
     def esc(v: str) -> str:
         return str(v).replace("|", "\\|")
+
     out = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
     for r in rows:
         out.append("| " + " | ".join(esc(r.get(h, "")) for h in headers) + " |")

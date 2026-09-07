@@ -142,16 +142,16 @@ journal tool does: your old reasoning gets re-examined, including for evidence t
 - `skills/validate/SKILL.md`.
 
 ### Exit criteria
-- [ ] A thesis with new news appends a validation containing **both** supporting and contrary sections.
-- [ ] Schema-level rejection: verdict `still_valid` with an empty contrary section is impossible.
-- [ ] Pass B runs without access to Pass A output (asserted in test).
-- [ ] A still-valid thesis on an over-weight position produces a `position_note` naming the breach
+- [x] A thesis with new news appends a validation containing **both** supporting and contrary sections.
+- [x] Schema-level rejection: verdict `still_valid` with an empty contrary section is impossible.
+- [x] Pass B runs without access to Pass A output (asserted in test).
+- [x] A still-valid thesis on an over-weight position produces a `position_note` naming the breach
       (e.g. "22% of portfolio against a 15% limit") — P3 no longer validates in isolation.
-- [ ] A `position_note` containing a number absent from the computed portfolio context **fails
+- [x] A `position_note` containing a number absent from the computed portfolio context **fails
       validation** (negative test required).
-- [ ] Horizon expiry moves stale hypotheses to `expired`.
-- [ ] `finlink validate` runs end-to-end on the `echo` driver at zero cost.
-- [ ] **Hand-written content in an existing thesis file is byte-identical after a validation run**
+- [x] Horizon expiry moves stale hypotheses to `expired`.
+- [x] `finlink validate` runs end-to-end on the `echo` driver at zero cost.
+- [x] **Hand-written content in an existing thesis file is byte-identical after a validation run**
       (regression test — this is the append-only guarantee).
 
 ---
@@ -178,13 +178,13 @@ system catches concentration risk no matter how convincing your thesis sounds.
 - `finlink review`, `finlink risk-check`; `skills/review/SKILL.md`, `skills/risk-check/SKILL.md`.
 
 ### Exit criteria
-- [ ] A deliberately over-concentrated portfolio triggers expected alerts; no LLM path can dismiss them.
-- [ ] Review renders **both** halves; all figures from `domain/` — no model-generated numbers.
-- [ ] Portfolio half shows measurable weight drift and at least one thesis-vs-portfolio conflict on
+- [x] A deliberately over-concentrated portfolio triggers expected alerts; no LLM path can dismiss them.
+- [x] Review renders **both** halves; all figures from `domain/` — no model-generated numbers.
+- [x] Portfolio half shows measurable weight drift and at least one thesis-vs-portfolio conflict on
       seeded data (valid thesis on an over-limit position).
-- [ ] Review surfaces >=1 concrete behavioural pattern from seeded history
+- [x] Review surfaces >=1 concrete behavioural pattern from seeded history
       (e.g. "3 of 5 sells happened within 2 weeks of purchase").
-- [ ] §16 metrics computed and printed.
+- [x] §16 metrics computed and printed.
 
 ---
 
@@ -202,9 +202,9 @@ per-stock analysis cannot show.
 - Event-driven alerting (product doc Phase 5) **remains deferred** — no scheduler by design (D6).
 
 ### Exit criteria
-- [ ] Correlation + concentration + currency exposure render for a multi-market portfolio.
-- [ ] SEK/HKD exposure is explicit, not implicit.
-- [ ] Optional static HTML renders offline with no server.
+- [x] Correlation + concentration + currency exposure render for a multi-market portfolio.
+- [x] SEK/HKD exposure is explicit, not implicit.
+- [x] Optional static HTML renders offline with no server.
 
 ---
 

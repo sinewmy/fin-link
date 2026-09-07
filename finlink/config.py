@@ -10,6 +10,23 @@ import yaml
 
 DEFAULT_PIPELINES: dict[str, str] = {}
 
+# OPENROUTER_API_KEY_CODEX is the key this project reads; plain OPENROUTER_API_KEY
+# is still honoured so an existing shell profile keeps working.
+API_KEY_ENV_VARS = ("OPENROUTER_API_KEY_CODEX", "OPENROUTER_API_KEY")
+
+
+def api_key_env_var() -> str:
+    """Which env var supplied the key. Used in error messages that name the fix."""
+    return API_KEY_ENV_VARS[0]
+
+
+def _api_key_from_env() -> str:
+    for var in API_KEY_ENV_VARS:
+        value = os.environ.get(var)
+        if value:
+            return str(value)
+    return ""
+
 
 @dataclass
 class RuntimeConfig:
@@ -25,7 +42,7 @@ class RuntimeConfig:
         raw = raw or {}
         models = dict(DEFAULT_PIPELINES)
         models.update({k: v for k, v in (raw.get("models") or {}).items() if v})
-        key = str(raw.get("openrouter_api_key") or os.environ.get("OPENROUTER_API_KEY") or "")
+        key = str(raw.get("openrouter_api_key") or _api_key_from_env() or "")
         return cls(
             root=root,
             models=models,

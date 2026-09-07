@@ -71,8 +71,9 @@ This is the single most important flow in the product. Notice how much of it is 
 1. Skill `record-trade` collects the facts and, critically, asks the question you didn't answer:
    **"What would prove you wrong?"** You reply: "if hyperscaler capex guidance goes negative for two
    quarters."
-2. `finlink record-trade` **appends** a row to `portfolio/ledger.md` and updates `positions.md`.
-   Currency conversion happens in `domain/pnl.py`, not in the model.
+2. `finlink record-trade` **appends** a row to `portfolio/ledger.md` (the source of truth),
+   **re-derives** `positions.md` from the ledger, and **debits/credits `cash.md`** in the
+   trade's currency. Currency conversion happens in `domain/pnl.py`, not in the model.
 3. Pipeline **P1** sends *only your reason text* to the LLM (via OpenRouter, structured output,
    `require_parameters: true`). It returns a hypothesis tree — no opinion, no price view.
 4. A new thesis file is created with `status: draft`.
@@ -89,7 +90,8 @@ This is the single most important flow in the product. Notice how much of it is 
 | Thesis | `theses/NVDA-ai-datacenter-capex.md` frontmatter: `status`, `horizon: 2y`, `invalidation_conditions[]`, `confidence` |
 | Hypotheses | `hypotheses:` list — `h1` core ("AI datacenter capex keeps growing", observable: hyperscaler capex guidance), `h2`–`h4` sub (GPU demand, >80% share, margins stable) |
 | Observable metrics | `h*.observable_metric` — **this is what makes later validation possible** |
-| Position | `portfolio/positions.md` row updated, linked by `thesis_slug` |
+| Position | `portfolio/positions.md` **re-derived from the ledger** (FIFO avg cost), linked by `thesis_slug` |
+| Cash | `portfolio/cash.md` debited (buy) or credited (sell) in the trade's currency |
 
 **Why the LLM is here:** purely to turn a sentence into falsifiable hypotheses. It gives zero
 investment insight. You could type the tree by hand and lose nothing but time.

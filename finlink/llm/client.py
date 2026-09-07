@@ -104,6 +104,4 @@ class LLMClient:
                         error=last_error,
                         attempts=attempt,
                     )
-        raise RuntimeError(
-            f"LLM pipeline {pipeline} failed after 2 attempts: {last_error}"
-        )
+        raise RuntimeError(f"LLM pipeline {pipeline} failed after 2 attempts: {last_error}")

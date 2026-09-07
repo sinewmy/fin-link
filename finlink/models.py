@@ -67,7 +67,15 @@ class ThesisFrontmatter(BaseModel):
     base_currency: str = Field(default="USD")
     invalidation_conditions: list[str] = Field(default_factory=list)
     confidence: Confidence = Confidence.MEDIUM
+    last_validated: date | None = Field(
+        default=None, description="Set by P3; never set at creation"
+    )
     hypotheses: list[Hypothesis] = Field(default_factory=list)
+
+    @field_validator("last_validated", mode="before")
+    @classmethod
+    def _blank_date(cls, v: object) -> object:
+        return _blank_to_none(v)
 
     @field_validator("base_currency")
     @classmethod
@@ -92,6 +100,7 @@ class PositionRow(BaseModel):
     @classmethod
     def _blank_date(cls, v: object) -> object:
         return _blank_to_none(v)
+
     notes: str = ""
 
     @field_validator("currency")

@@ -3,5 +3,62 @@ base_currency: USD
 hkd_peg: '7.8'          # HKD is pegged; do not float it
 fx:
   SEK: '0.095'          # 1 SEK = 0.095 USD — refresh with `finlink fx-set`
-models: {}              # fill per pipeline, e.g. decompose: openai/gpt-4o-mini
-risk_rules: []
+
+# Per-pipeline model IDs. No model is hardcoded in source (design rule D9).
+# Leave empty and pass --driver echo to run offline at zero cost.
+models:
+  P1_decompose: 'deepseek/deepseek-v4-flash'
+  P3_validate_pass_a: 'deepseek/deepseek-v4-flash'
+  P3_validate_pass_b: 'deepseek/deepseek-v4-flash'
+  P3_validate_synthesis: 'deepseek/deepseek-v4-flash'
+  P4_review: 'deepseek/deepseek-v4-flash'
+
+# Deterministic risk rails (domain/risk.py). Never evaluated by an LLM,
+# and no code path lets a model suppress an alert.
+risk_rules:
+  - id: concentration
+    kind: max_position_weight
+    limit: '15'          # percent of portfolio
+  - id: min_cash
+    kind: min_cash_pct
+    limit: '5'
+  - id: drawdown
+    kind: max_drawdown_pct
+    limit: '25'
+
+# Optional: ticker -> country. Matched case-insensitively, with leading zeros and
+# the exchange suffix ignored, so '00700', '0700' and '0700.HK' are one key.
+# Three buckets: US, China, EU — an unmapped ticker must not open a fourth.
+countries:
+  BABA: US          # ADR listed in the US
+  GLD: US
+  SGOV: US
+  '00700.HK': China     # Tencent
+  '00981.HK': China     # SMIC
+  '01810.HK': China     # Xiaomi
+  '02359.HK': China     # WuXi AppTec
+  INVE-B.ST: EU       # Investor B
+  LUG.ST: EU          # Lundin Gold
+
+# Optional: ticker -> sector. Without these, names report as Unclassified
+# (counted and flagged, never silently bucketed).
+sectors:
+  BABA: Consumer Discretionary
+  GLD: Commodities
+  SGOV: Short-Term Treasury
+  '00700.HK': Communication Services
+  '00981.HK': Information Technology
+  '01810.HK': Consumer Discretionary
+  '02359.HK': Health Care
+  INVE-B.ST: Financials
+  LUG.ST: Materials
+
+# Display names for tickers whose symbol is not self-explanatory. Cosmetic only:
+# reports show this instead of the raw ticker, never instead of a computed figure.
+names:
+  '00700.HK': Tencent
+  '00981.HK': SMIC
+  '01810.HK': Xiaomi
+  '02359.HK': WuXi AppTec
+  INVE-B.ST: Investor B
+  LUG.ST: Lundin Gold

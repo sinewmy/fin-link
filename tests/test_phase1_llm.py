@@ -252,12 +252,12 @@ def test_openrouter_sends_require_parameters(monkeypatch):
                 hypotheses=[
                     {"id": "h1", "kind": "core", "statement": "a", "observable_metric": "m"},
                     {
-                    "id": "h2",
-                    "kind": "sub",
-                    "parent": "h1",
-                    "statement": "b",
-                    "observable_metric": "n",
-                },
+                        "id": "h2",
+                        "kind": "sub",
+                        "parent": "h1",
+                        "statement": "b",
+                        "observable_metric": "n",
+                    },
                 ],
                 invalidation_conditions=["c"],
             )

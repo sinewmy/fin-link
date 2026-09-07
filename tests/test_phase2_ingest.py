@@ -25,8 +25,9 @@ from finlink.ingest.store import Store
 def bar(day_offset: int, close: str, ticker: str = "X", ccy: str = "USD") -> PriceBar:
     d = date(2026, 1, 1) + timedelta(days=day_offset)
     c = Decimal(close)
-    return PriceBar(ticker=ticker, day=d, open=c, high=c, low=c, close=c,
-                    adj_close=c, volume=1000, currency=ccy)
+    return PriceBar(
+        ticker=ticker, day=d, open=c, high=c, low=c, close=c, adj_close=c, volume=1000, currency=ccy
+    )
 
 
 def test_simple_return():
@@ -120,9 +121,16 @@ def test_news_without_url_is_discarded(tmp_path: Path):
 def test_news_dedupes_by_url(tmp_path: Path):
     store = Store(tmp_path)
     store.ensure()
+
     def it(n):
-        return NewsItem(ticker="X", title=f"t{n}", url=f"https://e.com/{n}",
-                                published_at="2026-01-01", source="s")
+        return NewsItem(
+            ticker="X",
+            title=f"t{n}",
+            url=f"https://e.com/{n}",
+            published_at="2026-01-01",
+            source="s",
+        )
+
     store.append_news([it("a"), it("b")])
     assert store.append_news([it("a"), it("c")]) == 1
     assert len(store.load_news("X")) == 3
@@ -186,6 +194,7 @@ def test_cache_is_disposable_and_restorable(tmp_path: Path):
     before = store.latest_price("AAPL")
 
     import shutil
+
     shutil.rmtree(tmp_path / "data")
 
     store2 = Store(tmp_path)
@@ -207,7 +216,9 @@ def test_hkd_peg_is_not_overridden_by_config_fx(tmp_path: Path):
     ws = tmp_path / "ws"
     subprocess.run(
         [sys.executable, "-m", "finlink.cli", "init", str(ws)],
-        cwd=root, check=True, capture_output=True,
+        cwd=root,
+        check=True,
+        capture_output=True,
     )
     cfg_path = ws / "config" / "config.yaml"
     raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
