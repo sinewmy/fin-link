@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import urllib.error
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -243,3 +245,162 @@ def test_hkd_peg_is_not_overridden_by_config_fx(tmp_path: Path):
     assert "HKD" not in (final.get("fx") or {}), (
         "HKD must stay on the configured peg, not a live rate"
     )
+
+
+# ---------------- RSS news driver ----------------
+
+def _fake_entry(link: str, title: str, summary: str = "", published: str = "") -> object:
+    return type(
+        "Entry",
+        (),
+        {
+            "link": link,
+            "title": title,
+            "summary": summary,
+            "published": published,
+            "published_parsed": (2026, 9, 1, 12, 0, 0, 0, 1, -1),
+            "updated_parsed": None,
+        },
+    )()
+
+
+def test_rss_news_driver_parses_entries(monkeypatch):
+    import finlink.ingest.rss_news_driver as rss_mod
+
+    monkeypatch.setattr(
+        rss_mod.feedparser,
+        "parse",
+        lambda url: type(
+            "Feed",
+            (),
+            {
+                "entries": [
+                    _fake_entry("https://e.co/1", "Alpha news one"),
+                    _fake_entry("", "no link — discarded"),
+                    _fake_entry("https://e.co/2", "Alpha news two"),
+                ],
+                "feed": {"title": "Test Feed"},
+            },
+        )(),
+    )
+    driver = rss_mod.RSSNewsDriver(feeds=["https://example.com/feed?s={query}"])
+    items = driver.fetch_news("AAPL")
+    assert len(items) == 2
+    assert items[0].ticker == "AAPL"
+    assert items[0].published_at  # non-empty ISO ts from published_parsed
+
+
+def test_rss_news_driver_hk_symbol_norm(monkeypatch):
+    import finlink.ingest.rss_news_driver as rss_mod
+
+    seen = {}
+
+    def fake_parse(url):
+        seen["url"] = url
+        return type("Feed", (), {"entries": [], "feed": {"title": ""}})()
+
+    monkeypatch.setattr(rss_mod.feedparser, "parse", fake_parse)
+    driver = rss_mod.RSSNewsDriver(feeds=["https://feed/{query}"])
+    driver.fetch_news("00700.HK")
+    # Ticker has a company query override; the URL must carry the encoded name.
+    assert "Tencent" in seen["url"] and "00700" in seen["url"]
+
+
+# ---------------- Alpha Vantage multi-key ------------------
+
+def test_alphavantage_requires_key():
+    from finlink.ingest.alphavantage_driver import AlphaVantageDriver
+    with pytest.raises(IngestError, match="needs an API key"):
+        AlphaVantageDriver("")  # type: ignore[arg-type]
+
+
+def test_alphavantage_rotate_keys_on_429(monkeypatch):
+    """When the first key 429s, the driver falls over to the second key."""
+    import finlink.ingest.alphavantage_driver as av
+
+    calls: list[str] = []
+    resp = {
+        "Time Series (Daily)": {
+            "2026-09-01": {
+                "1. open": "100", "2. high": "101", "3. low": "99",
+                "4. close": "100.5", "5. volume": "1000",
+            }
+        }
+    }
+
+    def fake_urlopen(req, timeout):
+        key = req.full_url.split("apikey=")[1].split("&")[0]
+        calls.append(key)
+        if key == "KEY1":
+            raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", None, None)
+        class Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return json.dumps(resp).encode()
+
+        return Resp()
+
+    monkeypatch.setattr(av.urllib.request, "urlopen", fake_urlopen)
+    # bypass throttle sleeps
+    d = av.AlphaVantageDriver(["KEY1", "KEY2"])
+    d.MIN_INTERVAL_S = 0.0
+    bars = d.fetch_prices("AAPL", days=90)
+    assert len(bars) == 1
+    assert bars[0].close == Decimal("100.5")
+    assert calls == ["KEY1", "KEY2"]  # fell over exactly once
+
+
+def test_alphavantage_hk_symbol_keeps_hk_suffix():
+    """Alpha Vantage accepts 4-digit .HK symbols directly (no .HKG rewrite)."""
+    from finlink.ingest.alphavantage_driver import AlphaVantageDriver
+
+    d = AlphaVantageDriver("KEY")
+    assert d._symbol("0700.HK") == "0700.HK"
+    assert d._symbol("00981.HK") == "0981.HK"  # left-pad, no leading zero
+    assert d._symbol("01810.HK") == "1810.HK"
+    assert d._symbol("INVE-B.ST") == "INVE-B.ST"  # Stockholm untouched
+
+
+def test_alphavantage_rotate_keys_on_daily_cap_json(monkeypatch):
+    """AV answers a spent key with HTTP 200 + daily-cap JSON; fall to next key."""
+    import finlink.ingest.alphavantage_driver as av
+
+    calls: list[str] = []
+    resp = {
+        "Time Series (Daily)": {
+            "2026-09-01": {
+                "1. open": "100", "2. high": "101", "3. low": "99",
+                "4. close": "100.5", "5. volume": "1000",
+            }
+        }
+    }
+    cap_json = {"Information": "We have detected your API key and our standard API rate limit is 25 requests per day."}
+
+    def fake_urlopen(req, timeout):
+        key = req.full_url.split("apikey=")[1].split("&")[0]
+        calls.append(key)
+        payload = cap_json if key == "KEY1" else resp
+
+        class Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                return json.dumps(payload).encode()
+
+        return Resp()
+
+    monkeypatch.setattr(av.urllib.request, "urlopen", fake_urlopen)
+    d = av.AlphaVantageDriver(["KEY1", "KEY2"])
+    d.MIN_INTERVAL_S = 0.0
+    bars = d.fetch_prices("AAPL", days=90)
+    assert len(bars) == 1
+    assert calls == ["KEY1", "KEY2"]

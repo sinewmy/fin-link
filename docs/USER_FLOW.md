@@ -176,7 +176,7 @@ clear. No code path lets a model dismiss an alert.
 ---
 
 ## The loop, end to end
-
+Ibef
 ```
 buy with a reason  ->  thesis + hypotheses + observable metrics   (Flow B)
         |                                    ^

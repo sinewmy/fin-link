@@ -103,7 +103,7 @@ reasoning, and does it change your behaviour?* Everything else is leverage on th
 **Maps to:** product doc Phase 2 + §9.
 
 ### Scope
-- `ingest/` + `yfinance` driver (prices, fundamentals) + RSS news driver + `mock` driver.
+- `ingest/` + Alpha Vantage driver (prices, fundamentals) + RSS news driver + `mock` driver.
 - Normalisation into `data/prices/*.csv` (append-only), `data/metrics/*.json`, `data/news/*.jsonl`
   (deduped by URL). **Uncited items discarded.**
 - `finlink onboard <ticker>` — verifies price + currency resolve; **fails loudly for HK/Swedish tickers

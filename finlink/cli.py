@@ -429,26 +429,39 @@ def set_frontmatter(thesis_path: Path, key: str, value: str, no_commit: bool) ->
 
 
 def _drivers(root: Path, driver_override: str | None = None) -> tuple[object, object | None]:
-    """Resolve market-data + news drivers. `mock` runs fully offline."""
+    """Resolve market-data + news drivers. Alpha Vantage is the default.
+
+    `mock` runs fully offline. Any other value (e.g. the LLM driver name, or an
+    unknown override) falls back to Alpha Vantage rather than failing at import.
+    """
     from finlink.config import RuntimeConfig
+    from finlink.ingest.alphavantage_driver import AlphaVantageDriver
     from finlink.ingest.mock import MockMarketDriver, MockNewsDriver
-    from finlink.ingest.yfinance_driver import YFinanceDriver
+    from finlink.ingest.rss_news_driver import RSSNewsDriver
 
     cfg = RuntimeConfig.load(root)
-    name = (driver_override or cfg.driver or "yfinance").lower()
+    name = (driver_override or cfg.driver or "alphavantage").lower()
     if name == "mock":
         # strict: unknown tickers fail instead of silently inventing prices
         return MockMarketDriver(strict=True), MockNewsDriver()
-    if name in ("yfinance", "openrouter"):
-        return YFinanceDriver(), None
-    if name == "echo":
-        return MockMarketDriver(), MockNewsDriver()
-    raise click.ClickException(f"unknown ingest driver {name!r} (expected yfinance or mock)")
+    if name == "alphavantage":
+        try:
+            keys = [k for k in (cfg.alphavantage_api_key, cfg.alphavantage_api_key_2) if k]
+            return AlphaVantageDriver(keys), RSSNewsDriver()
+        except Exception as e:  # noqa: BLE001 - surface missing-key cleanly
+            raise click.ClickException(str(e)) from e
+    # openrouter / echo / openai etc. are LLM driver names; for market data they
+    # all resolve to the default Alpha Vantage driver.
+    try:
+        keys = [k for k in (cfg.alphavantage_api_key, cfg.alphavantage_api_key_2) if k]
+        return AlphaVantageDriver(keys), RSSNewsDriver()
+    except Exception as e:  # noqa: BLE001 - surface missing-key cleanly
+        raise click.ClickException(str(e)) from e
 
 
 @main.command()
 @click.argument("tickers", nargs=-1)
-@click.option("--driver", default=None, help="yfinance (default) or mock (offline)")
+@click.option("--driver", default=None, help="alphavantage (default) or mock (offline)")
 @click.option("--days", default=400, show_default=True)
 def ingest(tickers: tuple[str, ...], driver: str | None, days: int) -> None:
     """Fetch prices, fundamentals and news into the data/ cache (idempotent)."""
@@ -1415,7 +1428,7 @@ def check_cmd(fix_separator: bool = False) -> None:
                 if ticker and " " in ticker.strip():
                     warnings.append(
                         f"{name} row {i}: ticker {ticker!r} contains a space — "
-                        "yfinance needs e.g. 'VOLV-B.ST', not 'Lundin Gold'"
+                        "use a real symbol e.g. 'VOLV-B.ST', not 'Lundin Gold'"
                     )
                 if ticker and not ticker.strip().isupper() and ticker.strip().isalpha():
                     warnings.append(
@@ -1831,34 +1844,55 @@ def _ensure_draft(path: Path, context: str) -> None:
 
 
 def _link_slugs(root: Path, mapping: dict[str, str]) -> None:
-    """Write thesis slugs into positions.md — key-scoped, never a rewrite.
+    """Write thesis slugs into positions.md AND ledger.md — key-scoped, never a rewrite.
 
     Only the `thesis_slug` cell changes; every other cell and all other rows are
-    preserved byte-for-byte.
+    preserved byte-for-byte. In the ledger, the slug is written to each BUY row of
+    the matching ticker (sells keep their slug).
     """
-    path = root / "portfolio" / "positions.md"
-    if not path.exists():
-        return
-    lines = path.read_text(encoding="utf-8").splitlines()
-    out: list[str] = []
-    header: list[str] = []
-    for ln in lines:
-        s = ln.strip()
-        if s.startswith("|") and s.count("|") >= 7:
-            cells = [c.strip() for c in s.strip("|").split("|")]
-            if not header and cells[0].lower() == "ticker":
-                header = cells
-                out.append(ln)
-                continue
-            if header and cells[0].lower() != "ticker" and not set(cells[0]) <= set("-: "):
-                idx = header.index("thesis_slug") if "thesis_slug" in header else 5
-                ticker = cells[0]
-                if ticker.upper() in {k.upper(): v for k, v in mapping.items()}:
-                    want = next(v for k, v in mapping.items() if k.upper() == ticker.upper())
-                    cells[idx] = want
-                ln = "| " + " | ".join(cells) + " |"
-        out.append(ln)
-    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+    for rel in ("portfolio/positions.md", "portfolio/ledger.md"):
+        path = root / rel
+        if not path.exists():
+            continue
+        lines = path.read_text(encoding="utf-8").splitlines()
+        out: list[str] = []
+        header: list[str] = []
+        for ln in lines:
+            s = ln.strip()
+            if s.startswith("|"):
+                cells = [c.strip() for c in s.strip("|").split("|")]
+                # Detect the header row by its column names (positions: 'ticker'
+                # first; ledger: 'date' first). Both carry a 'thesis_slug' column.
+                is_header = not header and (
+                    (cells and cells[0].lower() == "ticker")
+                    or ("thesis_slug" in [c.lower() for c in cells])
+                    or ("date" in [c.lower() for c in cells]
+                        and "side" in [c.lower() for c in cells])
+                )
+                if is_header:
+                    header = cells
+                    out.append(ln)
+                    continue
+                if header and not set(cells[0]) <= set("-: "):
+                    idx = header.index("thesis_slug") if "thesis_slug" in header else None
+                    ticker_col = header.index("ticker") if "ticker" in header else 0
+                    ticker = cells[ticker_col]
+                    if idx is not None and ticker.upper() in {
+                        k.upper(): v for k, v in mapping.items()
+                    }:
+                        # In the ledger, only buys carry a thesis slug.
+                        if rel.endswith("ledger.md"):
+                            side_idx = header.index("side") if "side" in header else None
+                            if side_idx is None or cells[side_idx].strip().lower() != "buy":
+                                out.append(ln)
+                                continue
+                        want = next(
+                            v for k, v in mapping.items() if k.upper() == ticker.upper()
+                        )
+                        cells[idx] = want
+                        ln = "| " + " | ".join(cells) + " |"
+            out.append(ln)
+        path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

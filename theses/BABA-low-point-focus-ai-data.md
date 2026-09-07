@@ -1,7 +1,7 @@
 ---
 ticker: BABA
 slug: low-point-focus-ai-data
-status: draft
+status: active
 created: '2026-06-29'
 horizon: ''
 base_currency: USD

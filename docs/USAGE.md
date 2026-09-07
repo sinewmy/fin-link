@@ -298,7 +298,7 @@ Add `--no-commit` to any writing command to skip the git commit.
 
 | Missing | Phase |
 |---|---|
-| Real news source (mock only today) | 2+ |
+| Real news source (RSS driver wired; coverage varies by ticker) | 2+ |
 | Automatic sector classification (needs a fundamentals mapping) | 5+ |
 
 ---
@@ -463,7 +463,7 @@ It catches the mistakes a markdown table invites:
 | Year-month only | `2024.10` | "add a day: 2024-10-01" |
 | Unsupported currency | `HK` | "use USD, HKD or SEK" |
 | Non-numeric quantity / cost | `abc` | "is not a number" |
-| Ticker with a space | `Lundin Gold` | warning: yfinance needs a real symbol |
+| Ticker with a space | `Lundin Gold` | warning: needs a real symbol |
 | Lowercase ticker | `baba` | warning: should be `BABA` |
 
 The separator case is the dangerous one: it fails **silently**, dropping one holding

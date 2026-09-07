@@ -71,7 +71,8 @@ finlink cost-report
 |---|---|---|
 | Data model | `finlink/ingest/base.py` | `PriceBar`, `NewsItem`, `Fundamentals`, driver protocols |
 | Cache store | `finlink/ingest/store.py` | Append-only, idempotent, disposable `data/` |
-| yfinance driver | `finlink/ingest/yfinance_driver.py` | Prices + fundamentals, fails loud on gaps |
+| Alpha Vantage driver | `finlink/ingest/alphavantage_driver.py` | Prices + fundamentals, fails loud on gaps |
+| Alpha Vantage keys | `ALPHAVANTAGE_API_KEY` (+ optional `ALPHAVANTAGE_API_KEY-2` in `.env`) | Used round-robin; a key that hits the daily cap rotates to the next |
 | Mock driver | `finlink/ingest/mock.py` | Deterministic offline data |
 | FX | `finlink/ingest/fx.py` | Frankfurter (ECB), no API key |
 | Pipeline | `finlink/ingest/pipeline.py` | P2 ingest + run logging |
@@ -108,7 +109,7 @@ FX works today via Frankfurter (real rate fetched: 1 SEK = 0.1047 USD).
 1. **`fx-update` overrode the HKD peg.** It wrote a live HKD rate into `config.fx`,
    which `build_rates()` prefers over the peg — contradicting "HKD is pegged, do not
    float it". Now HKD is skipped when `hkd_peg` is set.
-2. **Closure captured loop variables** in the yfinance price loop (ruff B023): every
+2. **Closure captured loop variables** in the (now-removed) yfinance price loop (ruff B023): every
    bar would have reported the last row's values. Fixed by binding as default args.
 3. **Mock driver invented data for unknown tickers**, so `onboard` reported OK for
    `FAKE-NOT-REAL`. Now strict by default in the CLI.
@@ -116,8 +117,8 @@ FX works today via Frankfurter (real rate fetched: 1 SEK = 0.1047 USD).
 
 ## Known gaps
 
-- News is only wired for the mock driver; a real RSS/news driver is not yet
-  connected (the `NewsDriver` protocol and dedupe/provenance logic are ready).
+- News now ships in `finlink/ingest/rss_news_driver.py` (RSS, no key) and is wired
+  into real market drivers, so `finlink ingest` also refreshes the news cache.
 - `finlink show` ignores stale-price warnings; it uses whatever is cached.
 
 ---
@@ -174,6 +175,11 @@ finlink doctor                       # before and after
 4. **A stacked `@property` decorator** in `context.py` silently shadowed the
    `PortfolioContext` class, so `build_context` returned the class, not an instance.
    Caught by tests, not by mypy.
+5. **`metric_of` diluted multi-hypothesis theses.** Concatenating every hypothesis's
+   observable metric into one matching surface scored a single-metric headline at
+   ~0.05 and dropped it — real 4-5 hypothesis theses found 0 candidates. Now
+   `prefilter_metrics` scores each hypothesis separately and keeps the best: BABA's
+   cache went from 0 to 12 candidates.
 
 ## Known gaps
 
@@ -181,7 +187,7 @@ finlink doctor                       # before and after
   reports `Unclassified`/`Unknown` until a mapping is wired in (Phase 5).
 - `alerts.md` is not written yet — the risk engine runs and feeds validations, but the
   standalone `finlink risk-check` command arrives with Phase 4.
-- News is only wired for the mock driver, as noted in Phase 2.
+- News is wired to real sources via `RSSNewsDriver` (Phase 2 follow-up).
 
 ---
 
@@ -373,4 +379,3 @@ hand-seeded portfolio into ledger-as-truth.
 3. `finlink backfill-theses --driver echo --dry-run` -> create theses from `notes`
    (or `record-trade` fresh buys), then `finlink confirm` each.
 4. Then `record-trade` / `ingest` work as documented.
-

@@ -1,7 +1,7 @@
 ---
 ticker: INVE-B.ST
 slug: investor-ab-exceptional-vehicle-long-ter
-status: draft
+status: active
 created: '2025-10-01'
 horizon: ''
 base_currency: USD

@@ -176,6 +176,37 @@ def test_published_after_compares_date_prefix_only():
     assert published_after(news_item(0, day="2026-09-01T13:00:00Z"), "2026-09-01")
 
 
+def test_prefilter_metrics_does_not_dilute_multi_hypothesis_theses():
+    """A headline matching ONE hypothesis must not be starved by the others.
+
+    `metric_of` concatenates all metrics, so a 4-hypothesis thesis dilutes a
+    one-metric headline to ~0.05 and drops it. Scoring per metric keeps it.
+    """
+    from finlink.domain.relevance import prefilter, prefilter_metrics
+
+    item = news_item(
+        0,
+        ticker="BABA",
+        title="Cloud growth strong",  # matches only h2's cloud/growth tokens
+        summary="",
+    )
+    hyps = {
+        "h1": "BABA's P/E ratio increases by at least 25% over the next 12 months",
+        "h2": "Alibaba Cloud revenue YoY growth rate",
+        "h3": "BABA's net profit margin (quarterly)",
+        "h4": "Net analyst upgrades minus downgrades over 6 months",
+    }
+    combined = " ".join(hyps.values())
+    assert not prefilter(
+        [item], ticker="BABA", since="2026-06-29", observable_metric=combined
+    ), "combined metric must still dilute the single-metric headline"
+
+    out = prefilter_metrics(
+        [item], ticker="BABA", since="2026-06-29", observable_metrics=list(hyps.values())
+    )
+    assert len(out) == 1 and out[0].score >= 0.10
+
+
 def test_overlap_score_is_zero_when_no_shared_tokens():
     item = news_item(0, title="zzz qqq", summary="nothing relevant here")
     assert overlap_score(item, "hyperscaler capex") == 0.0

@@ -30,7 +30,7 @@ Not specified in the product doc. Defaults below; each is reversible, but revers
 | D4 | Storage | **Markdown + YAML frontmatter in git.** No database. | See §1.1. |
 | D5 | UI | **Codex skills** (`SKILL.md`) + markdown reports. No web GUI. | The agent conversation *is* the interface. |
 | D6 | Scheduling | **None.** All pipelines are manual / CLI-invocable. | User decision (Q3). |
-| D7 | Language/runtime | **Python 3.12**, `uv` | Finance/data ecosystem (pandas, numpy, yfinance). |
+| D7 | Language/runtime | **Python 3.12**, `uv` | Finance/data ecosystem (pandas, numpy, httpx). |
 | D8 | LLM access | **OpenAI Python SDK pointed at OpenRouter.** `require_parameters: true` mandatory. | Best structured-output support. See §4.2. |
 | D9 | Model selection | **User-specified.** Config file maps each pipeline to a model ID. | User decision (Q2). |
 | D10 | "Agents" | **Deterministic pipelines, not autonomous agents.** | Product doc deprioritises autonomy; deterministic code is debuggable. |
@@ -320,7 +320,7 @@ The product doc's most important behavioural rule (§15.1), enforced structurall
 
 - Every item requires `source_url` + `published_at`; uncited items are **discarded, not stored**.
 - Dedupe by URL against `data/news/*.jsonl`. Re-running is safe.
-- Market data via `yfinance`; news via RSS/feeds. All normalised into `data/`.
+- Market data via Alpha Vantage; news via RSS/feeds. All normalised into `data/`.
 
 ---
 

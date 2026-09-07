@@ -135,3 +135,37 @@ def prefilter(
 def metric_of(hypotheses: list[dict[str, str]]) -> str:
     """Combine every observable metric into one matching surface."""
     return " ".join(str(h.get("observable_metric") or "") for h in hypotheses)
+
+
+def best_metric_overlap(item: NewsItem, observable_metrics: list[str]) -> float:
+    """Score an item against each metric separately and keep the best score.
+
+    `metric_of` concatenates every hypothesis so a long thesis dilutes per-headline
+    scores to near zero. Scoring per metric keeps the pre-filter honest: a headline
+    that genuinely reports one metric is not punished for the other hypotheses.
+    """
+    return max((overlap_score(item, m) for m in observable_metrics if m), default=0.0)
+
+
+def prefilter_metrics(
+    items: list[NewsItem],
+    *,
+    ticker: str,
+    since: str,
+    observable_metrics: list[str],
+    min_score: float = 0.10,
+    limit: int = 12,
+) -> list[Candidate]:
+    """Like `prefilter`, but scores each item against each metric separately."""
+    out: list[Candidate] = []
+    for it in items:
+        if it.ticker.upper() != ticker.upper():
+            continue
+        if not published_after(it, since):
+            continue
+        score = best_metric_overlap(it, observable_metrics)
+        if score < min_score:
+            continue
+        out.append(Candidate(item=it, score=score))
+    out.sort(key=lambda c: (-c.score, c.item.published_at))
+    return out[:limit]

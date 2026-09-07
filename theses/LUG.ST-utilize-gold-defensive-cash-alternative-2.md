@@ -1,7 +1,7 @@
 ---
 ticker: LUG.ST
 slug: utilize-gold-defensive-cash-alternative-2
-status: draft
+status: active
 created: '2026-08-01'
 horizon: ''
 base_currency: USD

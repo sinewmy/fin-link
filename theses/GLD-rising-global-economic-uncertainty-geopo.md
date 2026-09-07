@@ -1,7 +1,7 @@
 ---
 ticker: GLD
 slug: rising-global-economic-uncertainty-geopo
-status: draft
+status: active
 created: '2026-08-14'
 horizon: ''
 base_currency: USD

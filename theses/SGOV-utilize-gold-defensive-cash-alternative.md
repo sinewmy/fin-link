@@ -1,7 +1,7 @@
 ---
 ticker: SGOV
 slug: utilize-gold-defensive-cash-alternative
-status: draft
+status: active
 created: '2026-06-18'
 horizon: ''
 base_currency: USD

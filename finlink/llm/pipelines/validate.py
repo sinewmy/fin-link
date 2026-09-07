@@ -17,7 +17,7 @@ from pathlib import Path
 
 from finlink.domain.context import NoContext, PortfolioContext
 from finlink.domain.horizon import is_expired
-from finlink.domain.relevance import Candidate, metric_of, prefilter
+from finlink.domain.relevance import Candidate, prefilter_metrics
 from finlink.domain.risk import Alert
 from finlink.ingest.base import NewsItem
 from finlink.io.markdown import append_section, read_document, set_frontmatter_key
@@ -282,11 +282,12 @@ def run(
     min_score: float = 0.10,
 ) -> ValidationResult:
     day = inp.as_of or date.today()
-    candidates = prefilter(
+    metrics = [str(h.get("observable_metric") or "") for h in inp.hypotheses]
+    candidates = prefilter_metrics(
         inp.news,
         ticker=inp.ticker,
         since=inp.created.isoformat(),
-        observable_metric=metric_of(inp.hypotheses),
+        observable_metrics=metrics,
         min_score=min_score,
     )
     supporting, meta_a = run_pass_a(inp, candidates, client, model_a)
