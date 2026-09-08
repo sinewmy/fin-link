@@ -92,6 +92,24 @@ def evidence_digest(candidates: list[Candidate]) -> str:
     return sha256("\n".join(parts))
 
 
+def _expect_direction(want: str) -> object:
+    """Return a validator that forces an evidence pass to report its true side.
+
+    `direction` is a pipeline constant (supporting/contrary), not a model choice.
+    Enforced inside the client retry loop so a slip gets one free retry instead
+    of failing after two paid calls.
+    """
+
+    def check(res: object) -> None:
+        if getattr(res, "direction", None) != want:
+            raise ValueError(
+                f"pass returned direction {getattr(res, 'direction', None)!r}, "
+                f"expected {want!r}"
+            )
+
+    return check
+
+
 def run_pass_a(
     inp: ValidateInput, candidates: list[Candidate], client: LLMClient, model: str | None
 ) -> tuple[EvidencePass, LLMMetadata]:
@@ -109,9 +127,8 @@ def run_pass_a(
             ),
         },
         model=model,
+        validate_extra=_expect_direction("supporting"),
     )
-    if res.direction != "supporting":
-        raise RuntimeError(f"pass A returned direction {res.direction!r}, expected 'supporting'")
     return res, meta
 
 
@@ -137,9 +154,8 @@ def run_pass_b(
             ),
         },
         model=model,
+        validate_extra=_expect_direction("contrary"),
     )
-    if res.direction != "contrary":
-        raise RuntimeError(f"pass B returned direction {res.direction!r}, expected 'contrary'")
     return res, meta
 
 
@@ -171,7 +187,8 @@ def run_synthesis(
         model=model,
     )
     # The numeric audit: a model may interpret the computed context, not extend it.
-    res.check_position_note_numbers(context.allowed_numbers)
+    # Ticker digits (00700.HK) are names, not numbers — never flagged.
+    res.check_position_note_numbers(context.allowed_numbers, tickers={inp.ticker})
     if res.supporting_count != len(supporting.items):
         raise RuntimeError(
             f"synthesis reports {res.supporting_count} supporting items but pass A returned "

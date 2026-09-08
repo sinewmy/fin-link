@@ -203,12 +203,19 @@ class Synthesis(BaseModel):
             )
         return self
 
-    def check_position_note_numbers(self, allowed: set[str]) -> None:
+    def check_position_note_numbers(
+        self, allowed: set[str], tickers: set[str] | None = None
+    ) -> None:
         """Any number in `position_note` absent from the computed context fails.
 
         This is the enforceable half of 'the model may interpret but not recompute'.
+        Ticker tokens (e.g. 00700.HK) are stripped first: a ticker is a name, not
+        portfolio math — its digits must not trip the numeric audit.
         """
-        unknown = [n for n in _numbers(self.position_note) if n not in allowed]
+        text = self.position_note
+        for t in tickers or ():
+            text = text.replace(t, "")
+        unknown = [n for n in _numbers(text) if n not in allowed]
         if unknown:
             raise ValueError(
                 "position_note contains numbers absent from the computed portfolio context: "

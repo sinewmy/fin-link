@@ -243,8 +243,10 @@ finlink fx-update                 # refresh SEK; HKD stays on its peg
 Ingestion is **idempotent** — re-running adds nothing new. `data/` is a disposable
 cache; deleting it and re-running `ingest` restores it.
 
-`onboard` fails loudly on coverage gaps rather than storing nulls. Yahoo's HK coverage
-is incomplete, so always onboard HK tickers first.
+`onboard` fails loudly on coverage gaps rather than storing nulls. The default
+market driver is Tencent (free, keyless, HK + US); use `--driver alphavantage`
+only if you need fundamentals (P/E, market cap) and quota is available on this
+IP. Onboard HK tickers first to confirm coverage.
 
 ## 7. Inspect
 

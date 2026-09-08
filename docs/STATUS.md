@@ -71,8 +71,8 @@ finlink cost-report
 |---|---|---|
 | Data model | `finlink/ingest/base.py` | `PriceBar`, `NewsItem`, `Fundamentals`, driver protocols |
 | Cache store | `finlink/ingest/store.py` | Append-only, idempotent, disposable `data/` |
-| Alpha Vantage driver | `finlink/ingest/alphavantage_driver.py` | Prices + fundamentals, fails loud on gaps |
-| Alpha Vantage keys | `ALPHAVANTAGE_API_KEY` (+ optional `ALPHAVANTAGE_API_KEY-2` in `.env`) | Used round-robin; a key that hits the daily cap rotates to the next |
+| Tencent driver (default) | `finlink/ingest/tencent_driver.py` | Free keyless daily OHLCV for HK + US (prices only) |
+| Alpha Vantage driver (optional) | `finlink/ingest/alphavantage_driver.py` | Fundamentals (P/E, market cap) when quota permits; `--driver alphavantage` |
 | Mock driver | `finlink/ingest/mock.py` | Deterministic offline data |
 | FX | `finlink/ingest/fx.py` | Frankfurter (ECB), no API key |
 | Pipeline | `finlink/ingest/pipeline.py` | P2 ingest + run logging |

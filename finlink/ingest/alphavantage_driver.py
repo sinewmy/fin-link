@@ -17,7 +17,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -161,14 +161,14 @@ class AlphaVantageDriver:
             try:
                 o = Decimal(str(row["1. open"]))
                 h = Decimal(str(row["2. high"]))
-                l = Decimal(str(row["3. low"]))
+                low = Decimal(str(row["3. low"]))
                 c = Decimal(str(row["4. close"]))
                 vol = int(float(row.get("5. volume") or 0))
             except (KeyError, ValueError, InvalidOperation) as e:
                 raise IngestError(f"{ticker}: malformed row {day_str}: {e}") from e
             directly_parsed.append(
                 PriceBar(
-                    ticker=ticker, day=day, open=o, high=h, low=l, close=c,
+                    ticker=ticker, day=day, open=o, high=h, low=low, close=c,
                     adj_close=c,
                     volume=vol,
                     currency=ccy,
@@ -194,7 +194,7 @@ class AlphaVantageDriver:
         }.items():
             v = data.get(av_key)
             if v not in (None, "", "None"):
-                try:
+                try:  # noqa: SIM105 - one-off parse guard
                     metrics[fin_key] = Decimal(str(v))
                 except InvalidOperation:
                     pass

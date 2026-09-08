@@ -11,10 +11,11 @@ news, replacing the mock-only news of earlier phases.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
 import urllib.parse
-from typing import Any, Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
+from typing import Any
 
 import feedparser  # type: ignore[import-untyped]
 
@@ -49,7 +50,7 @@ def _published_at(entry: Any) -> str:
         parsed = getattr(entry, key, None)
         if parsed:
             try:
-                dt = datetime(*parsed[:6], tzinfo=timezone.utc)
+                dt = datetime(*parsed[:6], tzinfo=UTC)
                 return dt.isoformat()
             except (ValueError, TypeError):
                 continue
@@ -57,7 +58,7 @@ def _published_at(entry: Any) -> str:
     raw = getattr(entry, "published", "") or getattr(entry, "updated", "")
     if raw:
         try:
-            return parsedate_to_datetime(raw).astimezone(timezone.utc).isoformat()
+            return parsedate_to_datetime(raw).astimezone(UTC).isoformat()
         except (ValueError, TypeError):
             pass
     return ""

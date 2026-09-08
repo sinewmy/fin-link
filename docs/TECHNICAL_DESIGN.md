@@ -320,7 +320,9 @@ The product doc's most important behavioural rule (§15.1), enforced structurall
 
 - Every item requires `source_url` + `published_at`; uncited items are **discarded, not stored**.
 - Dedupe by URL against `data/news/*.jsonl`. Re-running is safe.
-- Market data via Alpha Vantage; news via RSS/feeds. All normalised into `data/`.
+- Market data via Tencent (free keyless, HK + US OHLCV; default) or Alpha Vantage
+  (`--driver alphavantage`, adds fundamentals when quota permits); news via RSS/feeds.
+  All normalised into `data/`.
 
 ---
 

@@ -112,6 +112,52 @@ def test_llm_run_logged(tmp_path: Path, client: LLMClient):
     assert rec["output"] is not None
 
 
+def test_validate_extra_triggers_one_retry_then_passes(tmp_path: Path):
+    """A wrong `direction` must retry once inside the client, not fail after 2 paid calls."""
+    from finlink.llm.schemas import EvidencePass
+
+    calls = {"n": 0}
+
+    class FlakyDirectionDriver:
+        name = "flaky"
+
+        def complete(self, *, system, user, schema, model=None):
+            calls["n"] += 1
+            # first call: wrong direction; retry: correct one
+            direction = "contrary" if calls["n"] == 2 else "supporting"
+            return (
+                EvidencePass(
+                    direction=direction, items=[], considered=0, not_found_reason="none"
+                ),
+                type(
+                    "Meta",
+                    (),
+                    {
+                        "driver": "flaky", "model": "m", "tokens_in": 1,
+                        "tokens_out": 1, "cost_usd": 0.0, "latency_ms": 1,
+                        "raw": {},
+                    },
+                )(),
+            )
+
+    c = LLMClient(FlakyDirectionDriver(), LLMRunLog(tmp_path / "logs" / "llm_runs.jsonl"), "m")  # type: ignore[arg-type]
+
+    def check(res):
+        if getattr(res, "direction", None) != "contrary":
+            raise ValueError("expected contrary direction")
+
+    res, meta = c.run(
+        pipeline="P3_validate_pass_b",
+        prompt_name="validate_contrary_v1",
+        schema=EvidencePass,
+        variables={"ticker": "X", "hypotheses": "h1", "user_prompt": "u"},
+        model="m",
+        validate_extra=check,
+    )
+    assert calls["n"] == 2
+    assert res.direction == "contrary"
+
+
 def test_failed_run_is_logged_and_raises(tmp_path: Path):
     class BrokenDriver:
         name = "broken"

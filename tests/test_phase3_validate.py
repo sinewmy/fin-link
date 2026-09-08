@@ -323,6 +323,30 @@ def test_context_handles_unpriced_ticker_without_inventing_zero():
     assert "not in priced holdings" in ctx.render()
 
 
+def test_position_note_with_ticker_digits_is_not_foreign():
+    """HK tickers (00700.HK) contain digits but are not portfolio math.
+
+    Regression: a position note naming the ticker must pass the numeric audit.
+    """
+    view = _view()
+    rules = [Rule(id="r1", kind=RuleKind.MAX_POSITION_WEIGHT, limit=Decimal("15"))]
+    ctx = build_context(view, "NVDA", alerts=evaluate(view, rules))
+    synth = Synthesis(
+        verdict=Verdict.CHALLENGED,
+        confidence="medium",
+        rationale="both sides found",
+        position_note=(
+            "00700.HK holds a 66.67% weight, above the 15.00% concentration limit"
+        ),
+        uncertainty="limited sources",
+        supporting_count=1,
+        contrary_count=1,
+    )
+    synth.check_position_note_numbers(
+        ctx.allowed_numbers, tickers={"00700.HK"}
+    )  # must not raise
+
+
 def test_position_note_with_foreign_number_is_rejected():
     view = _view()
     ctx = build_context(view, "NVDA")

@@ -7,5 +7,4 @@
 | 00981.HK | 500 | 75.60 | HKD | 2026-05-20 | bullish-smic-s-leadership-anchoring | Bullish on SMIC's leadership anchoring the domestic semiconductor ecosystem, I have strong conviction in the long-term trajectory of China's chip industry. |
 | 01810.HK | 4400 | 27.72 | HKD | 2024-08-19 | believing-xiaomi-s-valuation-severely | Believing Xiaomi’s valuation was severely depressed at the time, I anticipated that the stock was inflecting into a strong upward reversal |
 | 02359.HK | 400 | 10 | HKD | 2024-09-24 | highly-optimistic-about-long-term-outloo | Highly optimistic about the long-term outlook of the biopharmaceutical sector, I view it as a primary growth driver. |
-| INVE-B.ST | 788 | 351 | SEK | 2025-10-01 | investor-ab-exceptional-vehicle-long-ter | Investor AB is an exceptional vehicle for long-term wealth accumulation while residing in Sweden |
-| LUG.ST | 159 | 628 | SEK | 2026-08-01 | utilize-gold-defensive-cash-alternative-2 | Utilize gold as a defensive cash alternative to preserve capital ahead of a major economic crisis |
+

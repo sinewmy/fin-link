@@ -55,6 +55,7 @@ class LLMClient:
         schema: type[S],
         variables: dict[str, object],
         model: str | None = None,
+        validate_extra: object | None = None,
     ) -> tuple[S, LLMMetadata]:
         template = load_prompt(prompt_name)
         system = template.render(**variables)
@@ -77,6 +78,8 @@ class LLMClient:
                     system=system, user=user, schema=schema, model=resolved_model
                 )
                 assert isinstance(result, schema)
+                if validate_extra is not None:
+                    validate_extra(result)
                 self._log.record(
                     pipeline=pipeline,
                     driver=self._driver.name,

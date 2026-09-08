@@ -379,7 +379,10 @@ def test_alphavantage_rotate_keys_on_daily_cap_json(monkeypatch):
             }
         }
     }
-    cap_json = {"Information": "We have detected your API key and our standard API rate limit is 25 requests per day."}
+    cap_json = {
+        "Information": "We have detected your API key and our standard API rate "
+        "limit is 25 requests per day."
+    }
 
     def fake_urlopen(req, timeout):
         key = req.full_url.split("apikey=")[1].split("&")[0]
@@ -404,3 +407,79 @@ def test_alphavantage_rotate_keys_on_daily_cap_json(monkeypatch):
     bars = d.fetch_prices("AAPL", days=90)
     assert len(bars) == 1
     assert calls == ["KEY1", "KEY2"]
+
+
+# ---------------- Tencent driver (free, keyless HK + US) -------------
+
+def test_tencent_symbol_mapping():
+    from finlink.ingest.tencent_driver import TencentDriver
+
+    d = TencentDriver()
+    assert d._symbol("00700.HK") == "hk00700"
+    assert d._symbol("00981.HK") == "hk00981"
+    assert d._symbol("01810.HK") == "hk01810"
+    assert d._symbol("02359.HK") == "hk02359"
+    assert d._symbol("0700.HK") == "hk00700"
+    assert d._symbol("BABA") == "usBABA.N"
+    assert d._symbol("GLD") == "usGLD.AM"
+    assert d._symbol("SGOV") == "usSGOV.N"
+    assert d._currency("00700.HK") == "HKD"
+    assert d._currency("BABA") == "USD"
+
+
+def test_tencent_rejects_unsupported():
+    from finlink.ingest.tencent_driver import IngestError as E
+    from finlink.ingest.tencent_driver import TencentDriver
+
+    d = TencentDriver()
+    for bad in ["INVE-B.ST", "LUG.ST", "XYZ.ST", ""]:
+        with pytest.raises(E):
+            d._symbol(bad)
+
+
+def test_tencent_parses_kline_rows(monkeypatch):
+    import finlink.ingest.tencent_driver as tc
+
+    rows = [
+        ["2026-09-01", "100.0", "101.5", "102.0", "99.5", "1000"],
+        ["2026-09-02", "101.0", "99.0", "102.2", "98.0", "2000"],
+    ]
+
+    def fake_request_json(self, url):
+        return {"data": {"hk00981": {"day": rows}}}
+
+    monkeypatch.setattr(tc.TencentDriver, "_request_json", fake_request_json)
+    d = tc.TencentDriver(delay=0)
+    bars = d.fetch_prices("00981.HK", days=10)
+    assert len(bars) == 2
+    assert bars[0].day.isoformat() == "2026-09-01"
+    assert bars[0].open == Decimal("100.0")
+    assert bars[0].high == Decimal("102.0")
+    assert bars[0].low == Decimal("99.5")
+    assert bars[0].close == Decimal("101.5")
+    assert bars[0].adj_close == Decimal("101.5")
+    assert bars[0].volume == 1000
+    assert bars[0].currency == "HKD"
+    assert bars[-1].close == Decimal("99.0")
+
+
+def test_tencent_empty_series_raises(monkeypatch):
+    import finlink.ingest.tencent_driver as tc
+
+    monkeypatch.setattr(
+        tc.TencentDriver,
+        "_request_json",
+        lambda self, url: {"data": {"usAAPL.N": {}}},
+    )
+    d = tc.TencentDriver(delay=0)
+    with pytest.raises(tc.IngestError, match="no day series"):
+        d.fetch_prices("AAPL", days=10)
+
+
+def test_tencent_bare_us_uses_mic_default(monkeypatch):
+    """A bare US ticker without a mapping must still get the .N MIC suffix."""
+    from finlink.ingest.tencent_driver import TencentDriver
+
+    d = TencentDriver()
+    assert d._symbol("AAPL") == "usAAPL.N"
+    assert d._symbol("NVDA") == "usNVDA.N"

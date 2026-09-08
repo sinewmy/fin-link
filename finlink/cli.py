@@ -429,39 +429,38 @@ def set_frontmatter(thesis_path: Path, key: str, value: str, no_commit: bool) ->
 
 
 def _drivers(root: Path, driver_override: str | None = None) -> tuple[object, object | None]:
-    """Resolve market-data + news drivers. Alpha Vantage is the default.
+    """Resolve market-data + news drivers. Tencent is the default.
 
-    `mock` runs fully offline. Any other value (e.g. the LLM driver name, or an
-    unknown override) falls back to Alpha Vantage rather than failing at import.
+    `mock` runs fully offline. `alphavantage` requires an API key and is kept for
+    fundamentals (P/E, market cap, margins) that Tencent does not expose. Any
+    unknown override falls back to Tencent rather than failing at import.
     """
     from finlink.config import RuntimeConfig
-    from finlink.ingest.alphavantage_driver import AlphaVantageDriver
     from finlink.ingest.mock import MockMarketDriver, MockNewsDriver
     from finlink.ingest.rss_news_driver import RSSNewsDriver
+    from finlink.ingest.tencent_driver import TencentDriver
 
     cfg = RuntimeConfig.load(root)
-    name = (driver_override or cfg.driver or "alphavantage").lower()
+    name = (driver_override or cfg.driver or "tencent").lower()
     if name == "mock":
         # strict: unknown tickers fail instead of silently inventing prices
         return MockMarketDriver(strict=True), MockNewsDriver()
     if name == "alphavantage":
+        from finlink.ingest.alphavantage_driver import AlphaVantageDriver
+
         try:
             keys = [k for k in (cfg.alphavantage_api_key, cfg.alphavantage_api_key_2) if k]
             return AlphaVantageDriver(keys), RSSNewsDriver()
         except Exception as e:  # noqa: BLE001 - surface missing-key cleanly
             raise click.ClickException(str(e)) from e
     # openrouter / echo / openai etc. are LLM driver names; for market data they
-    # all resolve to the default Alpha Vantage driver.
-    try:
-        keys = [k for k in (cfg.alphavantage_api_key, cfg.alphavantage_api_key_2) if k]
-        return AlphaVantageDriver(keys), RSSNewsDriver()
-    except Exception as e:  # noqa: BLE001 - surface missing-key cleanly
-        raise click.ClickException(str(e)) from e
+    # all resolve to the default Tencent driver.
+    return TencentDriver(), RSSNewsDriver()
 
 
 @main.command()
 @click.argument("tickers", nargs=-1)
-@click.option("--driver", default=None, help="alphavantage (default) or mock (offline)")
+@click.option("--driver", default=None, help="tencent (default), alphavantage, or mock (offline)")
 @click.option("--days", default=400, show_default=True)
 def ingest(tickers: tuple[str, ...], driver: str | None, days: int) -> None:
     """Fetch prices, fundamentals and news into the data/ cache (idempotent)."""
