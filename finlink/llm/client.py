@@ -64,7 +64,7 @@ class LLMClient:
         input_hash = sha256(system + base_user)
 
         last_error: str | None = None
-        for attempt in (1, 2):
+        for attempt in (1, 2, 3):
             try:
                 # Retry noise is kept in a SEPARATE message so it can never be
                 # mistaken for user content and end up in a stored thesis.
@@ -95,7 +95,7 @@ class LLMClient:
                 return result, meta
             except Exception as e:  # noqa: BLE001 - driver errors vary
                 last_error = str(e)
-                if attempt == 2:
+                if attempt == 3:
                     self._log.record(
                         pipeline=pipeline,
                         driver=self._driver.name,
@@ -107,4 +107,4 @@ class LLMClient:
                         error=last_error,
                         attempts=attempt,
                     )
-        raise RuntimeError(f"LLM pipeline {pipeline} failed after 2 attempts: {last_error}")
+        raise RuntimeError(f"LLM pipeline {pipeline} failed after 3 attempts: {last_error}")

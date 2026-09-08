@@ -19,6 +19,11 @@ Rules:
 - `position_note`: one sentence interpreting the portfolio context above. You may REFER to the
   supplied figures but you must not restate a figure that is not there, compute a new one, or
   contradict them. If a limit is breached, name the breach.
+- **NEVER do arithmetic.** Do not add, subtract, multiply, divide, compute a percentage change,
+  a margin, a difference, or a "breach by N points". Only ever quote a number EXACTLY as it
+  appears in the portfolio context. For example, if the context shows a drawdown limit
+  "44.32% vs 25.00%", write "44.32% drawdown vs a 25.00% limit" — do NOT write
+  "19.32 points over". A derived number fails validation and the whole run is rejected.
 - `uncertainty`: REQUIRED. State what could not be determined from the evidence available
   (missing data, stale sources, unresolved questions). "None" is not acceptable.
 - `supporting_count` and `contrary_count` must equal the number of items you were given.

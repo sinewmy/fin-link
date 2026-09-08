@@ -9,7 +9,7 @@ invalidation_conditions:
 - Global composite PMI stays above 50 for 12 consecutive months
 - Gold price falls by more than 10% from purchase price within 12 months
 - Gold 30-day realized volatility exceeds 40% for more than 3 consecutive months
-confidence: medium
+confidence: low
 hypotheses:
 - id: h1
   kind: core
@@ -31,6 +31,7 @@ hypotheses:
   observable_metric: Gold 30-day realized volatility below 40%
   status: pending
   parent: h2
+last_validated: '2026-09-08'
 ---
 
 ## Thesis
@@ -53,3 +54,32 @@ Utilize gold as a defensive cash alternative to preserve capital ahead of a majo
 - Gold 30-day realized volatility exceeds 40% for more than 3 consecutive months
 
 _Status is `draft` until you confirm the decomposition above._
+
+## Validation — 2026-09-08
+
+<!-- validation date: 2026-09-08 | candidates: 4 -->
+<!-- evidence-digest: c88129ef46dee1c0 -->
+
+### Supporting
+
+- none found — None of the supplied evidence items contain information about global composite PMI, gold price in USD, or gold 30-day realized volatility. The items all relate to SGOV (a short-term Treasury ETF) and do not provide data that directly or indirectly supports any of the three hypotheses.
+
+### Contrary
+
+- none found — None of the supplied evidence items provide information about global composite PMI, gold price trends, or gold realized volatility. The items focus on SGOV's declining yield and general market inflows into gold and Treasuries, but they do not contradict the hypotheses that a major economic crisis is approaching, that gold will preserve value, or that gold volatility will remain manageable. Without data directly opposing the observable conditions (PMI below 45, gold price direction, volatility under 40%), no contrary evidence can be extracted from this set of items. (no contrary evidence was found; this is not evidence of validity)
+
+### Portfolio context
+
+weight 22.95% | holdings 7 | cash 35.28% | LIMIT concentration SGOV 22.95% vs 15.00% BREACHED
+
+### Verdict
+
+undetermined — confidence low
+
+Both supporting and contrary evidence lists are empty, so there is no substantive evidence to evaluate the thesis. The only actionable information is the portfolio context showing a concentration limit breach, but without any evidence either for or against the thesis, the verdict must reflect the lack of confirmatory or contradictory data.
+
+> Position: The concentration limit for SGOV is breached (22.95% vs 15.00% limit).
+
+### Uncertainty
+
+Unable to determine whether SGOV’s current position or future prospects are justified, as no evidence was provided from either side. The impact of the concentration breach on thesis validity remains unaddressed.

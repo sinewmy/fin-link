@@ -23,3 +23,7 @@ Rules:
 - Do not soften, hedge away, or omit a finding because it is inconvenient. Finding real
   counter-evidence is the point of this pass.
 - Set `considered` to the number of candidate items you reviewed.
+- Every returned item MUST have ALL of these fields, or the whole output is rejected:
+  `hypothesis_id` (which hypothesis it bears on), `claim`, `url`, `published_at`,
+  `source`, `strength`, `why`. Do not omit `hypothesis_id` — each item must name the
+  hypothesis it addresses.

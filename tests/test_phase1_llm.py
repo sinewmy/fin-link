@@ -166,7 +166,7 @@ def test_failed_run_is_logged_and_raises(tmp_path: Path):
             raise RuntimeError("boom")
 
     c = LLMClient(BrokenDriver(), LLMRunLog(tmp_path / "logs" / "llm_runs.jsonl"), "broken")  # type: ignore[arg-type]
-    with pytest.raises(RuntimeError, match="failed after 2 attempts"):
+    with pytest.raises(RuntimeError, match="failed after 3 attempts"):
         decompose_run(
             DecomposeInput(ticker="NVDA", reason=REASON),
             client=c,
@@ -177,7 +177,7 @@ def test_failed_run_is_logged_and_raises(tmp_path: Path):
     assert len(lines) == 1
     rec = json.loads(lines[0])
     assert rec["status"] == "error"
-    assert rec["attempts"] == 2
+    assert rec["attempts"] == 3
     assert "boom" in (rec["error"] or "")
 
 

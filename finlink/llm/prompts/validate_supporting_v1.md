@@ -24,3 +24,7 @@ Rules:
   items here — a separate pass handles those.
 - Set `considered` to the number of candidate items you reviewed.
 - Do not mention numbers that do not appear in the supplied evidence.
+- Every returned item MUST have ALL of these fields, or the whole output is rejected:
+  `hypothesis_id` (which hypothesis it bears on), `claim`, `url`, `published_at`,
+  `source`, `strength`, `why`. Do not omit `hypothesis_id` — each item must name the
+  hypothesis it addresses.
