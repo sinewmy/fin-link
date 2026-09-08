@@ -15,6 +15,7 @@ MOCK_ANCHORS = {
     "AAPL": (Decimal("180"), "USD"),
     "NVDA": (Decimal("120"), "USD"),
     "MSFT": (Decimal("400"), "USD"),
+    "VOLV-B.ST": (Decimal("250"), "SEK"),
     "0700.HK": (Decimal("380"), "HKD"),
 }
 
