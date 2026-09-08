@@ -64,31 +64,15 @@ class ReviewResult:
 
 
 def allowed_numbers(inp: ReviewInput) -> set[str]:
-    """Every numeric token the narrative is permitted to mention."""
-    out: set[str] = set()
-    for snapshot in (inp.start_snapshot, inp.end_snapshot):
-        if snapshot is None:
-            continue
-        for table in (snapshot.by_ticker, snapshot.by_sector, snapshot.by_country):
-            out |= {_norm(v) for v in table.values()}
-        out |= {_norm(snapshot.cash_pct), _norm(snapshot.total_usd)}
-    for kind in _drift_values(inp):
-        out |= {_norm(kind.start_pct), _norm(kind.end_pct), _norm(kind.change_pct)}
-    for a in inp.alerts:
-        out |= {_norm(a.observed), _norm(a.limit)}
-    if inp.portfolio_return_pct is not None:
-        out |= {_norm(inp.portfolio_return_pct)}
-    if inp.portfolio_drawdown_pct is not None:
-        out |= {_norm(inp.portfolio_drawdown_pct)}
-    out |= {str(len(inp.period_trades)), str(len(inp.ledger)), str(len(inp.theses))}
-    out |= {str(len(inp.alerts)), str(len(open_alerts(inp.alerts)))}
-    for line in inp.conflicts:
-        out |= set(_numbers(line))
-    for p in inp.patterns:
-        out |= set(_numbers(p.detail))
-        out |= set(_numbers(p.name))
-    if inp.usage is not None:
-        out |= set(_numbers(inp.usage.render()))
+    """Every numeric token the narrative is permitted to mention.
+
+    This is the set of numbers that appear in the COMPUTED FACTS the model is
+    shown (`render_facts`). Deriving the allow-list from the facts themselves
+    guarantees: (a) tickers and dates the model sees are quotable, and (b) an
+    invented figure that is not in the facts is rejected. The two can never
+    drift apart.
+    """
+    out: set[str] = set(_numbers(render_facts(inp)))
     return {x for x in out if x}
 
 
@@ -111,10 +95,14 @@ def _norm(value: Decimal) -> str:
 def _numbers(text: str) -> set[str]:
     import re
 
-    return {
-        m.replace(",", "").rstrip("0").rstrip(".") or "0"
-        for m in re.findall(r"\d+(?:[.,]\d+)?", text or "")
-    }
+    out: set[str] = set()
+    # strip thousands separators so 225,005.06 is ONE number, then tokenize
+    # with . as the only decimal marker (dates keep their parts: 2024-10-01).
+    cleaned = re.sub(r"(?<=\d),(?=\d)", "", text or "")
+    for raw in re.findall(r"\d+(?:\.\d+)?", cleaned):
+        v = raw.rstrip("0").rstrip(".") if "." in raw else raw
+        out.add(v or "0")
+    return out
 
 
 def render_facts(inp: ReviewInput) -> str:
@@ -265,7 +253,8 @@ def run(
         },
         model=model,
     )
-    narrative.check_numbers(allowed)
+    tickers = {tf.ticker for _path, tf in inp.theses} | {r.ticker for r in inp.ledger}
+    narrative.check_numbers(allowed, tickers=tickers)
     body = render(inp, narrative)
 
     path = (reviews_dir or Path("reviews")) / f"{inp.week}.md"

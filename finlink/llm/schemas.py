@@ -7,6 +7,7 @@ is a field in one of these models.
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -228,14 +229,32 @@ _NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 
 
 def _numbers(text: str) -> set[str]:
-    """Extract numeric tokens, normalised so 22.30 and 22.3 compare equal."""
+    """Extract numeric tokens, normalised so 22.30 and 22.3 compare equal.
+
+    Thousands separators are removed first (225,005.06 is one atomic value —
+    not 225005 + 06), and . is the only decimal marker. Trailing zeros after a
+    decimal point are stripped (22.30 -> 22.3); integer leading/trailing zeros
+    are preserved so tickers keep their identity (00700). The review pipeline
+    strips tickers as names before this audit runs.
+    """
     out: set[str] = set()
-    for raw in _NUMBER.findall(text or ""):
-        v = raw.replace(",", "")
-        if "." in v:
-            v = v.rstrip("0").rstrip(".")
+    cleaned = re.sub(r"(?<=\d),(?=\d)", "", text or "")
+    for raw in re.findall(r"\d+(?:\.\d+)?", cleaned):
+        v = raw.rstrip("0").rstrip(".") if "." in raw else raw
         out.add(v or "0")
     return out
+
+
+def _approx(value: Decimal, allowed: Decimal) -> bool:
+    """Value equality with a tight relative tolerance.
+
+    Only genuine rounding of a supplied figure passes: 225005 vs 225005.06
+    (0.00003% off) yes; 225600.83 vs 225005.06 (0.27% off) no — the model must
+    not invent a "previous week" baseline. Unit changes (0.15 vs 15) also fail.
+    """
+    if allowed == 0:
+        return value == 0
+    return abs(value - allowed) <= abs(allowed) * Decimal("0.0001")
 
 
 class ReviewNarrative(BaseModel):
@@ -262,13 +281,47 @@ class ReviewNarrative(BaseModel):
     next_actions: list[str] = Field(default_factory=list)
     uncertainty: str = Field(min_length=1, description="What could not be determined")
 
-    def check_numbers(self, allowed: set[str]) -> None:
-        """Explicit numeric audit — every figure must trace back to `domain/`."""
+    def _allowed_values(self, allowed: set[str]) -> set[Decimal]:
+        out: set[Decimal] = set()
+        for token in allowed:
+            try:  # noqa: SIM105 - non-numeric token, ignore
+                out.add(Decimal(token))
+            except Exception:
+                pass
+        return out
+
+    def check_numbers(self, allowed: set[str], tickers: set[str] | None = None) -> None:
+        """Explicit numeric audit — every figure must trace back to `domain/`.
+
+        Compares by numeric VALUE with a relative tolerance, not by string token:
+        a model may round a supplied figure ($225005.06 -> $225005) but must not
+        turn a percentage into a fraction (15% -> 0.15) or invent a new number.
+
+        Ticker tokens are stripped first (00700.HK is a NAME, not 700) so their
+        digits never trip the audit.
+        """
+        from decimal import InvalidOperation
+
+        allowed_vals = self._allowed_values(allowed)
         unknown: list[str] = []
         for field_name in ("individual", "portfolio"):
-            unknown += [n for n in _numbers(getattr(self, field_name)) if n not in allowed]
+            text = getattr(self, field_name) or ""
+            for tkr in tickers or ():
+                text = text.replace(tkr, "")
+            for token in _numbers(text):
+                try:
+                    val = Decimal(token)
+                except InvalidOperation:
+                    continue
+                if any(_approx(val, a) for a in allowed_vals):
+                    continue
+                unknown.append(token)
         if unknown:
             raise ValueError(
                 "review narrative contains numbers the CLI did not compute: "
                 + ", ".join(sorted(set(unknown)))
+                + ". Every figure must appear verbatim in the supplied facts. "
+                "Derived amounts, prior-week baselines, percentages turned into "
+                "fractions, and any arithmetic are forbidden. Remove or replace "
+                "the offending numbers with exactly what the facts state."
             )

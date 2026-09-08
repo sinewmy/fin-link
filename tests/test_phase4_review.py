@@ -348,6 +348,68 @@ def test_review_narrative_rejects_invented_numbers():
         n.check_numbers({"15", "22"})
 
 
+def test_review_narrative_thousands_separator_atomic():
+    """225,005.06 is one number; 'fell from 225,600.83' is an invented baseline.
+
+    Regression: the tokenizer must not split the decimal fraction into '06'/'83'
+    fragments, and a prior-week total absent from facts must still be rejected.
+    """
+    from finlink.llm.schemas import ReviewNarrative
+
+    ok = ReviewNarrative(
+        individual="no trades",
+        portfolio="total is 225,005.06, cash 35.28%",
+        uncertainty="none",
+    )
+    ok.check_numbers({"225005.06", "35.28"})  # fraction atomic, passes
+
+    bad = ReviewNarrative(
+        individual="no trades",
+        portfolio="total fell from 225,600.83 to 225,005.06",
+        uncertainty="none",
+    )
+    with pytest.raises(ValueError, match="did not compute"):
+        bad.check_numbers({"225005.06", "35.28"})
+
+
+def test_review_narrative_accepts_rounding_rejects_unit_change():
+    """Value-based audit: $225005 is a rounding of $225005.06 (allowed);
+    0.15 is a unit change from the 15% limit (rejected)."""
+    from finlink.llm.schemas import ReviewNarrative
+
+    ok = ReviewNarrative(
+        individual="total is roughly $225005",
+        portfolio="no drift",
+        uncertainty="none",
+    )
+    ok.check_numbers({"225005.06", "15"})  # rounding passes
+
+    bad = ReviewNarrative(
+        individual="limit is 0.15",
+        portfolio="no drift",
+        uncertainty="none",
+    )
+    with pytest.raises(ValueError, match="did not compute"):
+        bad.check_numbers({"225005.06", "15"})  # fraction != percent
+
+
+def test_review_narrative_allows_ticker_digits_in_facts():
+    """Ticker digits (00700.HK, 01810.HK) come from conflict facts, not math.
+
+    Regression: the allow-list is built from render_facts(), so ticker numbers
+    must pass the audit — they are names, not computed figures.
+    """
+    from finlink.llm.schemas import ReviewNarrative
+
+    n = ReviewNarrative(
+        individual="Reviewing 00700.HK and 01810.HK positions",
+        portfolio="concentration breach noted for 00700.HK at 17.37% vs 15.00%",
+        uncertainty="none additional",
+    )
+    # tickers are stripped as names before the numeric audit
+    n.check_numbers({"17.37", "15"}, tickers={"00700.HK", "01810.HK"})
+
+
 def test_review_narrative_allows_supplied_numbers():
     from finlink.llm.schemas import ReviewNarrative
 

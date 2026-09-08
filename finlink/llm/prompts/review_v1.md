@@ -27,3 +27,9 @@ Rules:
   not manufacture a failing.
 - `uncertainty` is REQUIRED: state what the data cannot tell you.
 - No probabilities, no scores out of 100, no price targets.
+- **Do not reconstruct a past that the material does not show.** If the facts show
+  no weight drift (all changes 0.00%), no prior-week total, and no portfolio return
+  line, then there is no prior week to compare against and you MUST NOT estimate one.
+  Never write numbers like "fell from $225,600.83", a "previous week" value, or a
+  weekly return the facts did not print. If something is not in the supplied facts,
+  treat it as missing — say so, do not fill it in.
